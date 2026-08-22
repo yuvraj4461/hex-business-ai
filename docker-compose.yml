@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: hex-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: hex_admin
+      POSTGRES_PASSWORD: hex_password
+      POSTGRES_DB: hex_business
+    ports:
+      - "5432:5432"
+    volumes:
+      - hex_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  hex_postgres_data:
