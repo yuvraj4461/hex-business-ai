@@ -3,9 +3,11 @@ from sqlalchemy.orm import Session
 from app.models.business_exposure import (
     BusinessExposure,
 )
+
 from app.models.global_event import (
     GlobalEvent,
 )
+
 from app.models.supply_route import (
     SupplyRoute,
 )
@@ -17,148 +19,100 @@ def analyze_global_event_exposure(
     event: GlobalEvent,
 ) -> list[dict]:
     """
-    Determine which supply routes and business
-    entities may be affected by a global event.
+    Return stored business exposure records for the
+    selected event.
 
-    This first version uses deterministic rules.
-    AI will explain the results later.
+    The BusinessExposure table is the authoritative
+    production exposure source because the Scenario
+    engine already uses it.
     """
 
-    routes = (
-        db.query(SupplyRoute)
+    exposures = (
+        db.query(BusinessExposure)
         .filter(
-            SupplyRoute.organization_id
+            BusinessExposure.organization_id
             == organization_id,
-            SupplyRoute.status == "ACTIVE",
+
+            BusinessExposure.global_event_id
+            == event.id,
+        )
+        .order_by(
+            BusinessExposure.detected_at.desc()
         )
         .all()
     )
 
     results = []
 
-    event_type = (
-        event.event_type or ""
-    ).upper()
+    for exposure in exposures:
 
-    region = (
-        event.region or ""
-    ).upper()
+        route = (
+            db.query(SupplyRoute)
+            .filter(
+                SupplyRoute.id
+                == exposure.route_id,
 
-    title = (
-        event.title or ""
-    ).upper()
-
-    for route in routes:
-
-        affected = False
-        exposure_type = None
-        severity = "LOW"
-
-        # ---------------------------------------
-        # Logistics / shipping disruption
-        # ---------------------------------------
-
-        if event_type == "LOGISTICS":
-
-            if (
-                route.corridor
-                == "RED_SEA"
-            ):
-                affected = True
-                exposure_type = (
-                    "ROUTE_DISRUPTION"
-                )
-                severity = "HIGH"
-
-        # ---------------------------------------
-        # Geopolitical event
-        # ---------------------------------------
-
-        elif event_type == "GEOPOLITICAL":
-
-            if (
-                route.corridor
-                == "RED_SEA"
-                or "RED SEA" in region
-                or "RED SEA" in title
-            ):
-                affected = True
-                exposure_type = (
-                    "GEOPOLITICAL_ROUTE_RISK"
-                )
-                severity = "HIGH"
-
-        # ---------------------------------------
-        # Trade events
-        # ---------------------------------------
-
-        elif event_type == "TRADE":
-
-            affected = True
-            exposure_type = (
-                "TRADE_DISRUPTION"
+                SupplyRoute.organization_id
+                == organization_id,
             )
-            severity = "MEDIUM"
-
-        if not affected:
-            continue
-
-        if severity == "HIGH":
-
-            delay_days = (
-                14
-                if route.corridor
-                == "RED_SEA"
-                else 7
-            )
-
-            cost_impact = (
-                float(
-                    route.freight_cost
-                )
-                * 0.25
-            )
-
-            revenue_at_risk = (
-                cost_impact * 2
-            )
-
-        else:
-
-            delay_days = 5
-
-            cost_impact = (
-                float(
-                    route.freight_cost
-                )
-                * 0.10
-            )
-
-            revenue_at_risk = (
-                cost_impact
-                * 1.5
-            )
+            .first()
+        )
 
         results.append(
             {
                 "event_id": event.id,
-                "route_id": route.id,
-                "supplier_id": route.supplier_id,
-                "product_id": route.product_id,
-                "exposure_type": exposure_type,
-                "severity": severity,
-                "delay_days": delay_days,
-                "cost_impact": cost_impact,
+
+                "route_id":
+                    exposure.route_id,
+
+                "supplier_id":
+                    exposure.supplier_id,
+
+                "product_id":
+                    exposure.product_id,
+
+                "exposure_type":
+                    exposure.exposure_type,
+
+                "severity":
+                    exposure.severity,
+
+                "delay_days":
+                    exposure.estimated_delay_days,
+
+                "cost_impact":
+                    float(
+                        exposure.estimated_cost_impact
+                        or 0
+                    ),
+
                 "revenue_at_risk":
-                    revenue_at_risk,
+                    float(
+                        exposure.estimated_revenue_at_risk
+                        or 0
+                    ),
+
                 "route_name":
-                    route.route_name,
+                    (
+                        route.route_name
+                        if route
+                        else None
+                    ),
+
                 "corridor":
-                    route.corridor,
+                    (
+                        route.corridor
+                        if route
+                        else None
+                    ),
+
+                "explanation":
+                    exposure.explanation,
             }
         )
 
     return results
+
 
 def summarize_supplier_impact(
     exposure_results: list[dict],
@@ -179,17 +133,31 @@ def summarize_supplier_impact(
             ] = {
                 "supplier_id":
                     supplier_id,
-                "route_count": 0,
-                "product_count": 0,
-                "max_severity": "LOW",
-                "delay_days": 0,
-                "cost_impact": 0.0,
-                "revenue_at_risk": 0.0,
+
+                "route_count":
+                    0,
+
+                "product_count":
+                    0,
+
+                "max_severity":
+                    "LOW",
+
+                "delay_days":
+                    0,
+
+                "cost_impact":
+                    0.0,
+
+                "revenue_at_risk":
+                    0.0,
             }
 
-        supplier = supplier_map[
-            supplier_id
-        ]
+        supplier = (
+            supplier_map[
+                supplier_id
+            ]
+        )
 
         supplier["route_count"] += 1
 
@@ -214,15 +182,18 @@ def summarize_supplier_impact(
         ]
 
         if item["severity"] == "HIGH":
+
             supplier[
                 "max_severity"
             ] = "HIGH"
 
         elif (
             item["severity"] == "MEDIUM"
-            and supplier["max_severity"]
-            != "HIGH"
+            and supplier[
+                "max_severity"
+            ] != "HIGH"
         ):
+
             supplier[
                 "max_severity"
             ] = "MEDIUM"
@@ -230,6 +201,7 @@ def summarize_supplier_impact(
     return list(
         supplier_map.values()
     )
+
 
 def summarize_product_impact(
     exposure_results: list[dict],
@@ -253,16 +225,28 @@ def summarize_product_impact(
             ] = {
                 "product_id":
                     product_id,
-                "route_count": 0,
-                "delay_days": 0,
-                "cost_impact": 0.0,
-                "revenue_at_risk": 0.0,
-                "max_severity": "LOW",
+
+                "route_count":
+                    0,
+
+                "delay_days":
+                    0,
+
+                "cost_impact":
+                    0.0,
+
+                "revenue_at_risk":
+                    0.0,
+
+                "max_severity":
+                    "LOW",
             }
 
-        product = product_map[
-            product_id
-        ]
+        product = (
+            product_map[
+                product_id
+            ]
+        )
 
         product[
             "route_count"
@@ -304,6 +288,7 @@ def summarize_product_impact(
         product_map.values()
     )
 
+
 def summarize_financial_impact(
     exposure_results: list[dict],
 ) -> dict:
@@ -328,6 +313,52 @@ def summarize_financial_impact(
         "total_revenue_at_risk":
             total_revenue_at_risk,
     }
+
+
+def calculate_business_risk(
+    exposure_results: list[dict],
+) -> dict:
+
+    if not exposure_results:
+
+        return {
+            "level": "LOW",
+            "score": 0,
+            "exposure_count": 0,
+        }
+
+    has_high = any(
+        item["severity"] == "HIGH"
+        for item in exposure_results
+    )
+
+    has_medium = any(
+        item["severity"] == "MEDIUM"
+        for item in exposure_results
+    )
+
+    if has_high:
+
+        score = 80
+        level = "HIGH"
+
+    elif has_medium:
+
+        score = 50
+        level = "MEDIUM"
+
+    else:
+
+        score = 20
+        level = "LOW"
+
+    return {
+        "level": level,
+        "score": score,
+        "exposure_count":
+            len(exposure_results),
+    }
+
 
 def build_global_exposure_summary(
     db: Session,
@@ -361,6 +392,12 @@ def build_global_exposure_summary(
         )
     )
 
+    business_risk = (
+        calculate_business_risk(
+            exposures
+        )
+    )
+
     return {
         "event": {
             "id": event.id,
@@ -370,11 +407,18 @@ def build_global_exposure_summary(
             "region": event.region,
         },
 
-        "exposures": exposures,
+        "exposures":
+            exposures,
 
-        "suppliers": suppliers,
+        "suppliers":
+            suppliers,
 
-        "products": products,
+        "products":
+            products,
 
-        "financial": financial,
+        "financial":
+            financial,
+
+        "business_risk":
+            business_risk,
     }
