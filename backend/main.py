@@ -27,6 +27,10 @@ from app.api.market import (
     router as market_router,
 )
 
+from app.api.routes import (
+    router as routes_router,
+)
+
 from app.api.demo import (
     router as demo_router,
 )
@@ -103,6 +107,10 @@ app.include_router(
 
 app.include_router(
     market_router
+)
+
+app.include_router(
+    routes_router
 )
 
 app.include_router(
