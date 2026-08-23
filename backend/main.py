@@ -1,10 +1,7 @@
 import os
 
 from fastapi import FastAPI
-from fastapi.middleware.cors import (
-    CORSMiddleware,
-)
-
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.auth import (
     router as auth_router,
@@ -20,6 +17,10 @@ from app.api.agriculture import (
 
 from app.api.global_exposure import (
     router as global_exposure_router,
+)
+
+from app.api.global_events import (
+    router as global_events_router,
 )
 
 from app.api.demo import (
@@ -53,21 +54,25 @@ allowed_origins = [
 ]
 
 
-if frontend_url not in allowed_origins:
+production_frontend_url = (
+    frontend_url.rstrip("/")
+)
+
+
+if (
+    production_frontend_url
+    not in allowed_origins
+):
     allowed_origins.append(
-        frontend_url.rstrip("/")
+        production_frontend_url
     )
 
 
 app.add_middleware(
     CORSMiddleware,
-
     allow_origins=allowed_origins,
-
     allow_credentials=True,
-
     allow_methods=["*"],
-
     allow_headers=["*"],
 )
 
@@ -89,6 +94,10 @@ app.include_router(
 )
 
 app.include_router(
+    global_events_router
+)
+
+app.include_router(
     demo_router
 )
 
@@ -103,7 +112,6 @@ app.include_router(
 
 @app.get("/")
 def root():
-
     return {
         "message":
             "HEX Business AI backend is running"
