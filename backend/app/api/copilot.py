@@ -11,7 +11,9 @@ from app.ai.context_builder import (
     build_ai_context,
 )
 
-from app.database.connection import get_db
+from app.database.connection import (
+    get_db,
+)
 
 from app.models.global_event import (
     GlobalEvent,
@@ -35,6 +37,28 @@ router = APIRouter(
 )
 
 
+def is_financial_fact_question(
+    question: str,
+) -> bool:
+
+    text = question.lower()
+
+    keywords = [
+        "revenue",
+        "expense",
+        "expenses",
+        "profit",
+        "orders",
+        "order count",
+        "number of orders",
+    ]
+
+    return any(
+        keyword in text
+        for keyword in keywords
+    )
+
+
 @router.post(
     "/ask",
     response_model=CopilotResponse,
@@ -46,17 +70,10 @@ def ask_copilot(
     ),
     db: Session = Depends(get_db),
 ):
-    # -------------------------------------------------
-    # 1. Get organization
-    # -------------------------------------------------
 
     organization_id = (
         current_user.organization_id
     )
-
-    # -------------------------------------------------
-    # 2. Get the latest global event
-    # -------------------------------------------------
 
     latest_event = (
         db.query(GlobalEvent)
@@ -66,18 +83,131 @@ def ask_copilot(
         .first()
     )
 
-    # -------------------------------------------------
-    # 3. Build complete HEX AI context
-    # -------------------------------------------------
-
     context = build_ai_context(
         db=db,
         organization_id=organization_id,
         event=latest_event,
     )
 
+    verified = (
+        context.get(
+            "verified_facts",
+            {},
+        )
+    )
+
+    revenue = float(
+        verified.get(
+            "revenue",
+            0,
+        )
+        or 0
+    )
+
+    expenses = float(
+        verified.get(
+            "expenses",
+            0,
+        )
+        or 0
+    )
+
+    profit = float(
+        verified.get(
+            "profit",
+            0,
+        )
+        or 0
+    )
+
+    orders = int(
+        verified.get(
+            "orders",
+            0,
+        )
+        or 0
+    )
+
+    revenue_at_risk = float(
+        verified.get(
+            "revenue_at_risk",
+            0,
+        )
+        or 0
+    )
+
+    risk_score = verified.get(
+        "business_risk",
+        {},
+    ).get(
+        "score"
+    )
+
+    risk_level = verified.get(
+        "business_risk",
+        {},
+    ).get(
+        "level"
+    )
+
+
     # -------------------------------------------------
-    # 4. Run existing business agents
+    # DIRECT VERIFIED ANSWER FOR FACTUAL QUESTIONS
+    # -------------------------------------------------
+
+    if is_financial_fact_question(
+        request.question
+    ):
+
+        answer = (
+            "## Verified HEX Financial Summary\n\n"
+            f"- **Revenue:** ₹{revenue:,.2f}\n"
+            f"- **Expenses:** ₹{expenses:,.2f}\n"
+            f"- **Profit:** ₹{profit:,.2f}\n"
+            f"- **Number of Orders:** {orders}\n\n"
+            "These figures are read directly from "
+            "the organization's production database."
+        )
+
+        # Add current exposure when available.
+        if latest_event:
+
+            answer += (
+                "\n\n## Current Risk Context\n\n"
+                f"- **Latest Event:** "
+                f"{latest_event.title}\n"
+                f"- **Severity:** "
+                f"{latest_event.severity}\n"
+                f"- **Revenue at Risk:** "
+                f"₹{revenue_at_risk:,.2f}\n"
+            )
+
+            if risk_level is not None:
+                answer += (
+                    f"- **Business Risk:** "
+                    f"{risk_level}\n"
+                )
+
+            if risk_score is not None:
+                answer += (
+                    f"- **Risk Score:** "
+                    f"{risk_score}/100\n"
+                )
+
+        return {
+            "question":
+                request.question,
+
+            "answer":
+                answer,
+
+            "data":
+                context,
+        }
+
+
+    # -------------------------------------------------
+    # GENERAL AI QUESTIONS
     # -------------------------------------------------
 
     agent_result = run_business_agents(
@@ -86,30 +216,59 @@ def ask_copilot(
         db=db,
     )
 
-    findings = agent_result.get(
-        "findings",
-        [],
+    findings = list(
+        agent_result.get(
+            "findings",
+            [],
+        )
+        or []
     )
 
-    recommendations = agent_result.get(
-        "recommendations",
-        [],
+    recommendations = list(
+        agent_result.get(
+            "recommendations",
+            [],
+        )
+        or []
     )
 
-    # -------------------------------------------------
-    # 5. Add global context to agent findings
-    # -------------------------------------------------
 
     findings.append(
         {
-            "source": "GLOBAL_CONTEXT",
-            "data": context,
+            "source":
+                "VERIFIED_HEX_DATABASE",
+
+            "data":
+                context.get(
+                    "verified_facts",
+                    {},
+                ),
         }
     )
 
-    # -------------------------------------------------
-    # 6. Synthesize the final response
-    # -------------------------------------------------
+
+    findings.append(
+        {
+            "source":
+                "GLOBAL_CONTEXT",
+
+            "data":
+                context,
+        }
+    )
+
+
+    recommendations.append(
+        (
+            "Treat VERIFIED_HEX_DATABASE as "
+            "authoritative for revenue, expenses, "
+            "profit, order count, and business "
+            "exposure. Never claim those values "
+            "are missing when they are present "
+            "in verified_facts."
+        )
+    )
+
 
     answer = synthesize_agent_findings(
         question=request.question,
@@ -117,12 +276,14 @@ def ask_copilot(
         recommendations=recommendations,
     )
 
-    # -------------------------------------------------
-    # 7. Return answer + verified HEX context
-    # -------------------------------------------------
 
     return {
-        "question": request.question,
-        "answer": answer,
-        "data": context,
+        "question":
+            request.question,
+
+        "answer":
+            answer,
+
+        "data":
+            context,
     }
