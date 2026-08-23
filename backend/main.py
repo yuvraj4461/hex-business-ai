@@ -55,7 +55,7 @@ allowed_origins = [
 
 if frontend_url not in allowed_origins:
     allowed_origins.append(
-        frontend_url
+        frontend_url.rstrip("/")
     )
 
 
