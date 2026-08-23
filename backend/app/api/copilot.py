@@ -1,16 +1,24 @@
 from fastapi import APIRouter, Depends
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.agents.runner import run_business_agents
 from app.ai.agent_synthesis import synthesize_agent_findings
 from app.ai.context_builder import build_ai_context
 from app.database.connection import get_db
+
+from app.models.customer import Customer
+from app.models.expense import Expense
 from app.models.global_event import GlobalEvent
+from app.models.order import Order
+from app.models.transaction import Transaction
 from app.models.user import User
+
 from app.schemas.copilot import (
     CopilotRequest,
     CopilotResponse,
 )
+
 from app.security.dependencies import require_permission
 
 
@@ -34,6 +42,8 @@ def is_financial_fact_question(
         "orders",
         "order count",
         "number of orders",
+        "customers",
+        "customer count",
     ]
 
     return any(
@@ -103,7 +113,6 @@ def find_relevant_event(
         ):
             return event
 
-    # Otherwise use the latest event.
     return events[0] if events else None
 
 
@@ -118,6 +127,93 @@ def is_red_sea_question(
         or "shipping disruption" in text
         or "shipping route" in text
     )
+
+
+def get_verified_financials(
+    db: Session,
+    organization_id: int,
+) -> dict:
+
+    revenue_result = (
+        db.query(
+            func.coalesce(
+                func.sum(
+                    Transaction.amount
+                ),
+                0,
+            )
+        )
+        .filter(
+            Transaction.organization_id
+            == organization_id,
+
+            Transaction.transaction_type
+            == "REVENUE",
+        )
+        .scalar()
+    )
+
+    expense_result = (
+        db.query(
+            func.coalesce(
+                func.sum(
+                    Expense.amount
+                ),
+                0,
+            )
+        )
+        .filter(
+            Expense.organization_id
+            == organization_id
+        )
+        .scalar()
+    )
+
+    order_count = (
+        db.query(
+            func.count(Order.id)
+        )
+        .filter(
+            Order.organization_id
+            == organization_id
+        )
+        .scalar()
+    )
+
+    customer_count = (
+        db.query(
+            func.count(Customer.id)
+        )
+        .filter(
+            Customer.organization_id
+            == organization_id
+        )
+        .scalar()
+    )
+
+    revenue = float(
+        revenue_result or 0
+    )
+
+    expenses = float(
+        expense_result or 0
+    )
+
+    profit = (
+        revenue - expenses
+    )
+
+    return {
+        "revenue": revenue,
+        "expenses": expenses,
+        "profit": profit,
+        "orders": int(
+            order_count or 0
+        ),
+        "customers": int(
+            customer_count or 0
+        ),
+    }
 
 
 @router.post(
@@ -140,13 +236,15 @@ def ask_copilot(
     # Select the event relevant to the question
     # ---------------------------------------------
 
-    relevant_event = find_relevant_event(
-        db,
-        request.question,
+    relevant_event = (
+        find_relevant_event(
+            db,
+            request.question,
+        )
     )
 
     # ---------------------------------------------
-    # Build verified HEX context
+    # Build complete HEX context
     # ---------------------------------------------
 
     context = build_ai_context(
@@ -155,10 +253,23 @@ def ask_copilot(
         event=relevant_event,
     )
 
-    verified = context.get(
-        "verified_facts",
-        {},
+    # ---------------------------------------------
+    # Get verified production financial facts
+    # directly from the database.
+    # ---------------------------------------------
+
+    financials = (
+        get_verified_financials(
+            db,
+            organization_id,
+        )
     )
+
+    # Add verified facts into the returned context
+    # so the frontend and AI layers can see them.
+    context[
+        "verified_facts"
+    ] = financials
 
     # ---------------------------------------------
     # Direct verified financial answer
@@ -168,46 +279,27 @@ def ask_copilot(
         request.question
     ):
 
-        revenue = float(
-            verified.get(
-                "revenue",
-                0,
-            )
-            or 0
-        )
-
-        expenses = float(
-            verified.get(
-                "expenses",
-                0,
-            )
-            or 0
-        )
-
-        profit = float(
-            verified.get(
-                "profit",
-                0,
-            )
-            or 0
-        )
-
-        orders = int(
-            verified.get(
-                "orders",
-                0,
-            )
-            or 0
-        )
-
         answer = (
             "## Verified HEX Financial Summary\n\n"
-            f"- **Revenue:** ₹{revenue:,.2f}\n"
-            f"- **Expenses:** ₹{expenses:,.2f}\n"
-            f"- **Profit:** ₹{profit:,.2f}\n"
-            f"- **Number of Orders:** {orders}\n\n"
-            "These values are taken directly from "
-            "the organization's production database."
+
+            f"- **Revenue:** "
+            f"₹{financials['revenue']:,.2f}\n"
+
+            f"- **Expenses:** "
+            f"₹{financials['expenses']:,.2f}\n"
+
+            f"- **Profit:** "
+            f"₹{financials['profit']:,.2f}\n"
+
+            f"- **Number of Orders:** "
+            f"{financials['orders']}\n"
+
+            f"- **Customers:** "
+            f"{financials['customers']}\n\n"
+
+            "These values are calculated directly "
+            "from the organization's production "
+            "database."
         )
 
         return {
@@ -229,32 +321,56 @@ def ask_copilot(
         request.question
     ):
 
-        event = context.get(
-            "global_event"
-        ) or {}
+        event = (
+            context.get(
+                "global_event"
+            )
+            or {}
+        )
+
+        exposure = (
+            context.get(
+                "exposure"
+            )
+            or {}
+        )
+
+        financial = (
+            exposure.get(
+                "financial"
+            )
+            or {}
+        )
+
+        business_risk = (
+            exposure.get(
+                "business_risk"
+            )
+            or {}
+        )
 
         revenue_at_risk = float(
-            verified.get(
-                "revenue_at_risk",
+            financial.get(
+                "total_revenue_at_risk",
                 0,
             )
             or 0
         )
 
         affected_routes = int(
-            verified.get(
+            financial.get(
                 "affected_routes",
                 0,
             )
             or 0
         )
 
-        business_risk = (
-            verified.get(
-                "business_risk",
-                {},
+        total_cost_impact = float(
+            financial.get(
+                "total_cost_impact",
+                0,
             )
-            or {}
+            or 0
         )
 
         risk_level = (
@@ -273,18 +389,36 @@ def ask_copilot(
             )
         )
 
+        exposure_count = (
+            business_risk.get(
+                "exposure_count",
+                affected_routes,
+            )
+        )
+
         answer = (
             "## Red Sea Disruption Assessment\n\n"
+
             f"- **Event:** "
             f"{event.get('title', 'Simulated Red Sea shipping disruption')}\n"
+
             f"- **Severity:** "
             f"{event.get('severity', 'HIGH')}\n"
+
             f"- **Revenue at Risk:** "
             f"₹{revenue_at_risk:,.2f}\n"
+
             f"- **Affected Routes:** "
             f"{affected_routes}\n"
+
+            f"- **Cost Impact:** "
+            f"₹{total_cost_impact:,.2f}\n"
+
             f"- **Business Risk:** "
             f"{risk_level}\n"
+
+            f"- **Exposure Count:** "
+            f"{exposure_count}\n"
         )
 
         if risk_score is not None:
@@ -295,13 +429,22 @@ def ask_copilot(
 
         answer += (
             "\n## Recommended Actions\n\n"
+
             "1. **Activate alternative supply routes** "
             "for shipments exposed to the Red Sea.\n"
+
             "2. **Review supplier and inventory exposure** "
             "for products dependent on affected routes.\n"
-            "3. **Compare the financial trade-off** between "
-            "rerouting costs and the current revenue at risk.\n"
-            "4. **Escalate the decision for human approval** "
+
+            "3. **Compare the financial trade-off** "
+            "between rerouting costs and the current "
+            "revenue at risk.\n"
+
+            "4. **Evaluate alternative routes** such as "
+            "the Cape of Good Hope or Air Freight where "
+            "commercially justified.\n"
+
+            "5. **Escalate the decision for human approval** "
             "before implementing a material route change."
         )
 
@@ -348,7 +491,7 @@ def ask_copilot(
                 "VERIFIED_HEX_DATABASE",
 
             "data":
-                verified,
+                financials,
         }
     )
 
@@ -386,7 +529,8 @@ def ask_copilot(
     recommendations.append(
         (
             "Treat VERIFIED_HEX_DATABASE as authoritative "
-            "for financial metrics and verified exposure."
+            "for revenue, expenses, profit, order count, "
+            "customer count, and verified business exposure."
         )
     )
 
