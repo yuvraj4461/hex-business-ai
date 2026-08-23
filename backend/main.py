@@ -23,6 +23,10 @@ from app.api.global_events import (
     router as global_events_router,
 )
 
+from app.api.market import (
+    router as market_router,
+)
+
 from app.api.demo import (
     router as demo_router,
 )
@@ -95,6 +99,10 @@ app.include_router(
 
 app.include_router(
     global_events_router
+)
+
+app.include_router(
+    market_router
 )
 
 app.include_router(
