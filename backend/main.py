@@ -43,6 +43,9 @@ from app.api.approvals import (
     router as approvals_router,
 )
 
+from app.api.agents import (
+    router as agents_router,
+)
 
 app = FastAPI(
     title="HEX Business AI",
@@ -125,6 +128,9 @@ app.include_router(
     approvals_router
 )
 
+app.include_router(
+    agents_router
+)
 
 @app.get("/")
 def root():
