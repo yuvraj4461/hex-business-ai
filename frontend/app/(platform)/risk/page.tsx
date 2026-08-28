@@ -8,6 +8,7 @@ import {
   DollarSign,
   Loader2,
   Package,
+  Info,
   ShieldAlert,
   Truck,
   Users,
@@ -146,6 +147,8 @@ export default function RiskPage() {
   }
 
   const riskLevel = selectedEvent?.business_risk?.level ?? "LOW";
+  const affectedCount = selectedEvent?.exposures?.length ?? 0;
+  const hasExposure = affectedCount > 0;
 
   return (
     <div className="p-6 lg:p-8">
@@ -256,6 +259,26 @@ export default function RiskPage() {
                 : ""}
             </p>
           </Panel>
+
+          {!hasExposure && (
+            <div className="mt-5">
+              <Panel
+                tone="stable"
+                label="Exposure"
+                title="No exposure to your supply chain"
+                action={<Info size={18} className="text-stable" />}
+              >
+                <p className="text-sm leading-6 text-dim">
+                  HEX matched this event against your active supply routes
+                  and open shipments and found no overlap — none of your
+                  lanes pass through the affected region or corridor, so
+                  there is no projected cost or revenue impact. If you
+                  expected exposure here, check that your routes and
+                  shipments are synced under Integrations.
+                </p>
+              </Panel>
+            </div>
+          )}
 
           <div className="mt-5 grid gap-4 md:grid-cols-3">
             <StatTile

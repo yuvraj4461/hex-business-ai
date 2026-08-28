@@ -20,6 +20,9 @@ from app.security.dependencies import (
 from app.services.scenario_engine import (
     evaluate_route_scenario,
 )
+from app.services.red_sea_orchestrator import (
+    run_event_scenario,
+)
 from app.models.recommendation import (
     Recommendation,
 )
@@ -29,6 +32,34 @@ router = APIRouter(
     prefix="/scenarios",
     tags=["Scenarios"],
 )
+
+
+@router.get("/{event_id}")
+def event_scenario(
+    event_id: int,
+    current_user: User = Depends(
+        require_permission("view_analytics")
+    ),
+    db: Session = Depends(get_db),
+):
+    """Full scenario analysis for any detected global event.
+
+    Same shape as ``GET /demo/red-sea`` but for an arbitrary event.
+    ``status`` is ``NOT_FOUND`` when the event id does not exist and
+    ``OK`` with zeroed exposure when the event does not touch the
+    org's supply chain.
+    """
+
+    result = run_event_scenario(
+        db=db,
+        organization_id=current_user.organization_id,
+        event_id=event_id,
+    )
+
+    if result.get("status") == "NOT_FOUND":
+        raise HTTPException(status_code=404, detail=result["message"])
+
+    return result
 
 
 @router.post(
