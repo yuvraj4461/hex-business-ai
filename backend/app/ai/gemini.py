@@ -18,17 +18,18 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-# Which flash models a given API key can see varies. Set GEMINI_MODEL to
-# pin one; otherwise we try these in order and cache the first that works.
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+# Google has retired 2.x flash for new API keys ("no longer available to
+# new users … use models/gemini-3.6-flash"). Newer keys only serve the
+# 3.6 generation. Set GEMINI_MODEL to pin one; otherwise we try these in
+# order and cache the first that works.
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
 GEMINI_TIMEOUT_MS = int(os.getenv("GEMINI_TIMEOUT_MS", "25000"))
 
 _MODEL_FALLBACKS = [
-    "gemini-2.5-flash",
+    "gemini-3.6-flash",
     "gemini-flash-latest",
+    "gemini-2.5-flash",
     "gemini-2.0-flash",
-    "gemini-2.5-flash-lite",
-    "gemini-2.5-pro",
 ]
 
 # Populated at runtime once a model call succeeds, so we stop probing.
@@ -48,7 +49,14 @@ def _candidate_models() -> list[str]:
 
 def _is_model_unavailable(exc: Exception) -> bool:
     text = str(exc).lower()
-    return "404" in text or "not available" in text or "not found" in text
+    return (
+        "404" in text
+        or "not_found" in text
+        or "not found" in text
+        or "no longer available" in text
+        or "not available" in text
+        or "is not supported for generatecontent" in text
+    )
 
 
 def is_configured() -> bool:
