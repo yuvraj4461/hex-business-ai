@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.db_bootstrap import bootstrap_on_startup
 from app.ingestion.scheduler import start_scheduler, stop_scheduler
 
 from app.api.auth import (
@@ -69,6 +70,7 @@ from app.api.merge import (
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    bootstrap_on_startup()
     start_scheduler()
     try:
         yield
