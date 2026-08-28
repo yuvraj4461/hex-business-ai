@@ -1,28 +1,18 @@
 # Python
-backend/venv/
-backend/__pycache__/
-backend/**/*.pyc
-backend/.pytest_cache/
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+.pytest_cache/
 
-# Environment files
+# Environment / secrets
 .env
 .env.*
-backend/.env
-frontend/.env
-frontend/.env.local
-frontend/.env.production
+!.env.example
 
-# Next.js
-frontend/.next/
-frontend/out/
+# Ingested / uploaded data files (per-connection upload store)
+data/uploads/
 
-# Node
-frontend/node_modules/
-
-# IDE
-.vscode/
-.idea/
-
-# OS
-.DS_Store
-Thumbs.db
+# Local scratch
+_e2e*.mjs
+_shot.mjs
