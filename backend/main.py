@@ -83,39 +83,40 @@ app = FastAPI(
 )
 
 
-frontend_url = os.getenv(
-    "FRONTEND_URL",
-    "http://localhost:3000",
-)
-
-
+# FRONTEND_URL may be a comma-separated list of exact origins.
 allowed_origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
 ]
-
-
-production_frontend_url = (
-    frontend_url.rstrip("/")
-)
-
-
-if (
-    production_frontend_url
-    not in allowed_origins
-):
-    allowed_origins.append(
-        production_frontend_url
-    )
+for raw in os.getenv("FRONTEND_URL", "").split(","):
+    origin = raw.strip().rstrip("/")
+    if origin and origin not in allowed_origins:
+        allowed_origins.append(origin)
 
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
+    # Vercel preview deployments: https://<project>-<hash>-<scope>.vercel.app
+    allow_origin_regex=os.getenv(
+        "FRONTEND_ORIGIN_REGEX",
+        r"https://.*\.vercel\.app",
+    ),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def security_headers(request, call_next):
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault(
+        "Referrer-Policy", "strict-origin-when-cross-origin"
+    )
+    return response
 
 
 app.include_router(
@@ -187,4 +188,17 @@ def root():
     return {
         "message":
             "HEX Business AI backend is running"
+    }
+
+
+@app.get("/health")
+def health():
+    """Liveness + config sanity for the deploy platform's health check."""
+
+    from app.config import missing_settings
+
+    missing = missing_settings()
+    return {
+        "status": "ok" if not missing else "degraded",
+        "missing_settings": missing,
     }
