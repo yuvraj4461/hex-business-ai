@@ -151,6 +151,12 @@ function ScenariosView() {
   const routeOptions = data.route_alternatives ?? [];
   const affectedCount = data.exposure?.exposures?.length ?? 0;
   const hasExposure = affectedCount > 0;
+  const rec = data.ai_recommendation ?? "";
+  // Backend returns this exact string only when the event is truly
+  // irrelevant; anything else is a real (macro / cost) assessment.
+  const noImpactAtAll =
+    !hasExposure && rec.startsWith("This event does not intersect");
+  const indirectImpact = !hasExposure && !noImpactAtAll;
 
   const eventTitle =
     event?.title ??
@@ -216,7 +222,7 @@ function ScenariosView() {
         </Panel>
       </div>
 
-      {!hasExposure && (
+      {noImpactAtAll && (
         <div className="mt-5">
           <Panel
             tone="stable"
@@ -230,6 +236,24 @@ function ScenariosView() {
               operational or financial impact. It stays on the watch list
               and will be re-evaluated if your routes or its severity
               change.
+            </p>
+          </Panel>
+        </div>
+      )}
+
+      {indirectImpact && (
+        <div className="mt-5">
+          <Panel
+            tone="elevated"
+            label="Exposure"
+            title="No direct route exposure — cost / market impact assessed"
+            action={<Info size={18} className="text-elevated" />}
+          >
+            <p className="text-sm leading-6 text-dim">
+              This is a macro / market event, not a physical disruption to
+              a shipping lane, so there is no route-level cost or revenue
+              figure. HEX has assessed the likely effect on your input
+              costs and margins below.
             </p>
           </Panel>
         </div>
@@ -255,13 +279,15 @@ function ScenariosView() {
               ? decision
               : hasExposure
                 ? "AWAITING REVIEW"
-                : "NO ACTION NEEDED"
+                : indirectImpact
+                  ? "MONITOR"
+                  : "NO ACTION NEEDED"
           }
           icon={ShieldAlert}
           tone={
             decision === "REJECTED"
               ? "critical"
-              : decision === "APPROVED" || !hasExposure
+              : decision === "APPROVED" || noImpactAtAll
                 ? "stable"
                 : "elevated"
           }

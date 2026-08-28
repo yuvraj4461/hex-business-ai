@@ -4,31 +4,43 @@ Each entry drives one Tavily news search. `category` seeds the stored
 event_type; `severity_hint` nudges scoring when the text is ambiguous.
 """
 
+# Phrased to surface actual *incidents* (something happened) rather than
+# market previews / "week ahead" commentary, which are not actionable
+# supply-chain events.
 STANDING_QUERIES: list[dict] = [
     {
-        "query": "global container shipping freight rate changes this week",
+        "query": "container freight rates spike surcharge shipping carriers this week",
         "category": "FREIGHT",
     },
     {
-        "query": "new import export tariffs or trade restrictions announced this week",
+        "query": "government imposes new tariff import duty export ban trade restriction",
         "category": "TARIFF",
     },
     {
-        "query": "commodity price surge steel aluminum copper wheat crude oil this week",
+        "query": "commodity price spike shortage steel aluminum copper wheat crude oil",
         "category": "PRICE_SHOCK",
     },
     {
-        "query": "major port strike closure or shipping lane disruption today",
+        "query": "port closed strike blockade vessels stranded shipping halted",
         "category": "LOGISTICS",
         "severity_hint": "HIGH",
     },
     {
-        "query": "central bank interest rate decision and inflation data this week",
+        "query": "factory shutdown production halt supplier disruption manufacturing plant",
+        "category": "LOGISTICS",
+    },
+    {
+        "query": "currency crash devaluation inflation spike export controls country",
         "category": "INFLATION",
     },
     {
-        "query": "Red Sea Suez Panama Canal Taiwan Strait shipping disruption latest",
+        "query": "Red Sea Suez Panama Taiwan Strait Hormuz shipping attack blocked rerouting",
         "category": "GEOPOLITICAL",
+        "severity_hint": "HIGH",
+    },
+    {
+        "query": "earthquake flood cyclone typhoon disrupts port factory logistics",
+        "category": "NATURAL_DISASTER",
         "severity_hint": "HIGH",
     },
 ]
@@ -41,4 +53,5 @@ CATEGORY_EVENT_TYPE = {
     "LOGISTICS": "LOGISTICS",
     "INFLATION": "ECONOMIC",
     "GEOPOLITICAL": "GEOPOLITICAL",
+    "NATURAL_DISASTER": "NATURAL_DISASTER",
 }
