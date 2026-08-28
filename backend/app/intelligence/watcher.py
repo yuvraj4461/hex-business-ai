@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import and_, delete, or_, select
 from sqlalchemy.orm import Session
 
 from app.intelligence.collectors.fx import collect_fx
@@ -75,11 +75,35 @@ def run_world_watch(db: Session) -> dict:
         logger.exception("World Watch exposure recompute failed")
         errors.append(f"recompute: {exc}")
 
+    # Prune noise: legacy "UNKNOWN"-severity rows from the deprecated
+    # collector, and stale unclassified GDELT geocode entries.
+    pruned = 0
+    try:
+        result = db.execute(
+            delete(GlobalEvent).where(
+                GlobalEvent.source == "GDELT",
+                or_(
+                    GlobalEvent.severity == "UNKNOWN",
+                    and_(
+                        GlobalEvent.event_type == "GENERAL",
+                        GlobalEvent.detected_at
+                        < datetime.utcnow() - timedelta(days=2),
+                    ),
+                ),
+            )
+        )
+        pruned = result.rowcount or 0
+        db.commit()
+    except Exception as exc:  # noqa: BLE001
+        db.rollback()
+        errors.append(f"prune: {exc}")
+
     duration_ms = int(
         (datetime.utcnow() - started).total_seconds() * 1000
     )
     summary.update(
         exposure_recomputes=recomputes,
+        pruned=pruned,
         errors=errors,
         duration_ms=duration_ms,
         finished_at=datetime.utcnow().isoformat(),

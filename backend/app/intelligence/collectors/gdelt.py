@@ -85,6 +85,10 @@ def collect_gdelt(db: Session, timespan: str = "3h") -> dict:
             continue
         title = (art.get("title") or "Untitled").strip()
         event_type = _classify(title)
+        # Skip unclassified articles — GDELT's broad query pulls a lot
+        # of tangential coverage. We only want real incidents.
+        if event_type == "GENERAL":
+            continue
         db.add(
             GlobalEvent(
                 source="GDELT",

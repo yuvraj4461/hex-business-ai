@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import {
+  Activity,
   DollarSign,
   ExternalLink,
   Globe2,
@@ -13,13 +14,17 @@ import {
 } from "lucide-react";
 
 import { apiRequest } from "@/lib/api";
-import { signedPercent } from "@/lib/format";
+import { num, signedPercent } from "@/lib/format";
 
 import PageHeader from "@/app/components/PageHeader";
 import Panel from "@/app/components/Panel";
 import SeverityBadge from "@/app/components/SeverityBadge";
 import { EmptyCard, LoadingCard } from "@/app/components/StateCard";
 import { toneForStatus } from "@/app/components/tone";
+import IncidentTrend, {
+  type TrendDay,
+} from "@/app/components/charts/IncidentTrend";
+import BarBreakdown from "@/app/components/charts/BarBreakdown";
 
 interface GlobalEvent {
   id: number;
@@ -45,6 +50,15 @@ interface FeedItem {
 interface FeedStatus {
   last_run_at: string | null;
   high_events_24h: number;
+}
+
+interface TrendData {
+  days: number;
+  total: number;
+  high_critical: number;
+  daily: TrendDay[];
+  by_type: { type: string; count: number }[];
+  by_severity: { severity: string; count: number }[];
 }
 
 function timeAgo(iso?: string | null): string {
@@ -89,6 +103,7 @@ export default function GlobalPage() {
     useState<AgricultureOverview | null>(null);
   const [feed, setFeed] = useState<FeedItem[]>([]);
   const [feedStatus, setFeedStatus] = useState<FeedStatus | null>(null);
+  const [trend, setTrend] = useState<TrendData | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
   const [loading, setLoading] = useState(true);
@@ -106,6 +121,14 @@ export default function GlobalPage() {
       setFeedStatus(status);
     } catch {
       /* feed is optional */
+    }
+
+    try {
+      setTrend(
+        await apiRequest<TrendData>("/intelligence/trend?days=14"),
+      );
+    } catch {
+      /* trend is optional */
     }
   }
 
@@ -179,6 +202,12 @@ export default function GlobalPage() {
   const commodities = Object.entries(market?.commodities ?? {});
   const risks = (agriculture?.risks ?? []).slice(0, 6);
 
+  const topCategory = trend?.by_type?.[0];
+  const typeBreakdown = (trend?.by_type ?? []).slice(0, 6).map((t) => ({
+    name: t.type.replace(/_/g, " "),
+    value: t.count,
+  }));
+
   return (
     <div className="p-6 lg:p-8">
       <PageHeader
@@ -208,6 +237,56 @@ export default function GlobalPage() {
           {error}
         </div>
       )}
+
+      {/* Incident Activity — the headline graph */}
+      <section className="mb-8">
+        <Panel
+          label={
+            <span className="flex items-center gap-1.5">
+              <Activity size={12} /> World Watch
+            </span>
+          }
+          title={`Incident Activity — last ${trend?.days ?? 14} days`}
+          tone={(trend?.high_critical ?? 0) > 0 ? "critical" : "live"}
+          action={
+            <div className="flex gap-5 text-right">
+              <div>
+                <p className="num text-lg font-semibold text-white">
+                  {num(trend?.total ?? 0)}
+                </p>
+                <p className="eyebrow">incidents</p>
+              </div>
+              <div>
+                <p className="num text-lg font-semibold text-critical">
+                  {num(trend?.high_critical ?? 0)}
+                </p>
+                <p className="eyebrow">high / critical</p>
+              </div>
+              {topCategory && (
+                <div>
+                  <p className="text-lg font-semibold text-white">
+                    {topCategory.type.replace(/_/g, " ")}
+                  </p>
+                  <p className="eyebrow">most active</p>
+                </div>
+              )}
+            </div>
+          }
+        >
+          <IncidentTrend data={trend?.daily ?? []} height={300} />
+
+          {typeBreakdown.length > 0 && (
+            <div className="mt-6 border-t border-hairline pt-5">
+              <p className="eyebrow mb-3">Incidents by category</p>
+              <BarBreakdown
+                data={typeBreakdown}
+                currency={false}
+                height={200}
+              />
+            </div>
+          )}
+        </Panel>
+      </section>
 
       {/* Live Feed — World Watch */}
       <section className="mb-8">
