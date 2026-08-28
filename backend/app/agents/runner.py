@@ -1,126 +1,78 @@
-from app.agents.finance_agent import finance_agent
-from app.agents.operations_agent import operations_agent
-from app.agents.risk_agent import risk_agent
+"""Entry point for running the HEX agent graph.
 
-from app.agents.state import AgentState
+This module used to build its own graph that omitted the Sales Agent.
+It now delegates to app.agents.orchestrator.build_graph so there is
+exactly one definition of the agent pipeline.
+"""
 
-from langgraph.graph import (
-    START,
-    END,
-    StateGraph,
+import logging
+from typing import Any
+
+from app.agents.orchestrator import (
+    AGENT_LABELS,
+    AGENT_SEQUENCE,
+    build_graph,
 )
 
+logger = logging.getLogger(__name__)
 
+
+# Kept for backwards compatibility: older code imported build_agent_graph
+# from this module.
 def build_agent_graph(db):
-
-    graph_builder = StateGraph(
-        AgentState
-    )
-
-    # ---------------------------------------------
-    # Finance node
-    # ---------------------------------------------
-
-    def finance_node(
-        state: AgentState,
-    ) -> AgentState:
-
-        return finance_agent(
-            state,
-            db,
-        )
-
-    # ---------------------------------------------
-    # Operations node
-    # ---------------------------------------------
-
-    def operations_node(
-        state: AgentState,
-    ) -> AgentState:
-
-        return operations_agent(
-            state,
-            db,
-        )
-
-    # ---------------------------------------------
-    # Risk node
-    # ---------------------------------------------
-
-    def risk_node(
-        state: AgentState,
-    ) -> AgentState:
-
-        return risk_agent(
-            state,
-            db,
-        )
-
-    # ---------------------------------------------
-    # Graph
-    # ---------------------------------------------
-
-    graph_builder.add_node(
-        "finance",
-        finance_node,
-    )
-
-    graph_builder.add_node(
-        "operations",
-        operations_node,
-    )
-
-    graph_builder.add_node(
-        "risk",
-        risk_node,
-    )
-
-    graph_builder.add_edge(
-        START,
-        "finance",
-    )
-
-    graph_builder.add_edge(
-        "finance",
-        "operations",
-    )
-
-    graph_builder.add_edge(
-        "operations",
-        "risk",
-    )
-
-    graph_builder.add_edge(
-        "risk",
-        END,
-    )
-
-    return graph_builder.compile()
+    return build_graph(db)
 
 
 def run_business_agents(
     question: str,
     organization_id: int,
     db,
-):
+) -> dict[str, Any]:
+    """Run all four agents and return the merged state.
 
-    initial_state = {
+    Always returns a dict with findings, recommendations, agent_runs and
+    errors, even if the graph itself fails to execute. Callers such as the
+    copilot endpoint can rely on those keys existing.
+    """
+
+    initial_state: dict[str, Any] = {
         "question": question,
-
-        "organization_id":
-            organization_id,
-
+        "organization_id": organization_id,
         "findings": [],
-
         "recommendations": [],
+        "agent_runs": [],
+        "errors": [],
     }
 
-    graph = build_agent_graph(
-        db
-    )
+    try:
+        graph = build_graph(db)
 
-    result = graph.invoke(
-        initial_state
-    )
+        result = graph.invoke(initial_state)
+
+    except Exception as exc:  # noqa: BLE001
+
+        logger.exception("Agent graph failed to execute")
+
+        return {
+            **initial_state,
+            "errors": [f"Agent graph failed: {exc}"],
+            "agent_runs": [
+                {
+                    "agent": AGENT_LABELS[name],
+                    "key": name,
+                    "status": "NOT_RUN",
+                    "duration_ms": 0,
+                    "findings_added": 0,
+                    "recommendations_added": 0,
+                }
+                for name in AGENT_SEQUENCE
+            ],
+        }
+
+    # Normalise so downstream consumers never hit a missing key.
+    result.setdefault("findings", [])
+    result.setdefault("recommendations", [])
+    result.setdefault("agent_runs", [])
+    result.setdefault("errors", [])
 
     return result

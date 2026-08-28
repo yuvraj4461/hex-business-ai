@@ -7,14 +7,21 @@ from passlib.context import CryptContext
 
 load_dotenv()
 
-SECRET_KEY = os.getenv(
-    "JWT_SECRET_KEY",
-    "change-this-in-production",
+# Read via config so that JWT_SECRET_KEY (.env) and JWT_SECRET
+# (.env.production) both resolve to the same value. Previously production
+# used a different variable name, silently fell back to the placeholder
+# below, and every authenticated request returned 401.
+from app.config import (
+    JWT_ALGORITHM,
+    JWT_EXPIRE_MINUTES,
+    JWT_SECRET_KEY,
 )
 
-ALGORITHM = "HS256"
+SECRET_KEY = JWT_SECRET_KEY or "change-this-in-production"
 
-ACCESS_TOKEN_EXPIRE_MINUTES = 60
+ALGORITHM = JWT_ALGORITHM
+
+ACCESS_TOKEN_EXPIRE_MINUTES = JWT_EXPIRE_MINUTES
 
 pwd_context = CryptContext(
     schemes=["bcrypt"],
