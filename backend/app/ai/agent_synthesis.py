@@ -103,9 +103,13 @@ def _fallback_answer(
         ]
         return "; ".join(parts[:6])
 
+    reason_line = (
+        f" (reason: {reason.splitlines()[0][:200]})" if reason else ""
+    )
     lines = [
         "HEX could not reach its language model, so this is a direct "
-        "summary of the specialist agent output (no AI synthesis).",
+        "summary of the specialist agent output (no AI synthesis)."
+        + reason_line,
         "",
         f"Question: {question}",
         "",

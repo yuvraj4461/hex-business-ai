@@ -21,11 +21,45 @@ from app.schemas.copilot import (
 
 from app.security.dependencies import require_permission
 
+from app.ai import gemini
+
 
 router = APIRouter(
     prefix="/copilot",
     tags=["AI Copilot"],
 )
+
+
+@router.get("/ai-status")
+def ai_status(
+    current_user: User = Depends(
+        require_permission("view_analytics")
+    ),
+):
+    """Live probe of the Gemini connection — diagnostic for deploys."""
+
+    if not gemini.is_configured():
+        return {
+            "configured": False,
+            "ok": False,
+            "error": "GEMINI_API_KEY is not set on the server.",
+        }
+
+    try:
+        text = gemini.generate_text("Reply with the single word: ok")
+        return {
+            "configured": True,
+            "ok": True,
+            "model": gemini._working_model or gemini.GEMINI_MODEL,
+            "sample": (text or "").strip()[:80],
+        }
+    except Exception as exc:  # noqa: BLE001
+        return {
+            "configured": True,
+            "ok": False,
+            "model_tried": gemini.GEMINI_MODEL,
+            "error": str(exc).splitlines()[0][:300],
+        }
 
 
 def is_financial_fact_question(

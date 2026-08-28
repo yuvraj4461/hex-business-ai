@@ -1,4 +1,8 @@
+import logging
+
 from app.ai.gemini import generate_text
+
+logger = logging.getLogger(__name__)
 
 
 SYSTEM_PROMPT = """
@@ -44,7 +48,11 @@ Explain the evidence behind your answer.
 
     try:
         text = generate_text(prompt)
-    except Exception:  # noqa: BLE001
-        return "HEX AI is temporarily unavailable."
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Copilot Gemini call failed: %s", exc)
+        return (
+            "HEX AI is temporarily unavailable "
+            f"({str(exc).splitlines()[0][:200]})."
+        )
 
     return text or "I could not generate a response."
