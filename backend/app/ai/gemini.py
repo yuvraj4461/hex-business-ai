@@ -18,7 +18,9 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
+# gemini-2.5-flash is a real model with a usable free-tier quota. Override
+# with the GEMINI_MODEL env var for a newer / higher-tier model.
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 GEMINI_TIMEOUT_MS = int(os.getenv("GEMINI_TIMEOUT_MS", "25000"))
 
 
