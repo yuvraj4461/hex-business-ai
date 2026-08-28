@@ -1,13 +1,17 @@
+import logging
 import os
 import json
 
 from dotenv import load_dotenv
 from google import genai
+from google.genai import types
 
 from app.ai.serialization import (
     make_json_safe,
 )
 
+
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
@@ -21,8 +25,13 @@ if not GEMINI_API_KEY:
     )
 
 
+# Bound how long a request waits on Gemini so a slow or overloaded
+# model degrades to a non-AI answer instead of hanging the HTTP request.
+GEMINI_TIMEOUT_MS = int(os.getenv("GEMINI_TIMEOUT_MS", "25000"))
+
 client = genai.Client(
-    api_key=GEMINI_API_KEY
+    api_key=GEMINI_API_KEY,
+    http_options=types.HttpOptions(timeout=GEMINI_TIMEOUT_MS),
 )
 
 
@@ -87,26 +96,18 @@ the supplied HEX context.
             "recommendation."
         )
 
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
 
-        error_text = str(exc)
+        # Gemini is a synthesis layer on top of already-computed HEX
+        # analysis. Quota (429), overload (503), deadline (504) and
+        # client timeouts should all degrade to a non-AI answer rather
+        # than 500-ing the caller.
+        logger.warning("Gemini business analysis unavailable: %s", exc)
 
-        if (
-            "429" in error_text
-            or "RESOURCE_EXHAUSTED"
-            in error_text
-            or "quota" in error_text.lower()
-        ):
-
-            return (
-                "Gemini AI is temporarily "
-                "unavailable because the current "
-                "API quota has been exhausted. "
-                "HEX completed the business, "
-                "route and financial analysis "
-                "without AI generation. "
-                "Human review is recommended "
-                "before taking action."
-            )
-
-        raise
+        return (
+            "Gemini AI is temporarily unavailable "
+            f"({str(exc).splitlines()[0][:200]}). "
+            "HEX completed the business, route and financial "
+            "analysis without AI generation. Human review is "
+            "recommended before taking action."
+        )
