@@ -31,8 +31,8 @@ def main() -> int:
         # 2. web-search collector degrades gracefully with no key
         import os
 
-        if not os.getenv("TAVILY_API_KEY"):
-            assert collect_web_search(db) == {"skipped": "TAVILY_API_KEY not set"}
+        if not (os.getenv("TAVILY_API_KEY") or os.getenv("SERPAPI_KEY")):
+            assert "skipped" in collect_web_search(db)
 
         # 3. full watcher runs and returns a structured summary
         summary = run_world_watch(db)
