@@ -1,35 +1,81 @@
 @import "tailwindcss";
 
+/* ============================================================
+   HEX — Command Center
+   A dark deep-navy instrument panel with a violet brand accent.
+   Severity colour is meaningful: red = critical, amber = elevated,
+   teal = stable, violet = live / brand / interactive.
+   Numbers render in Geist Mono, tabular.
+   ============================================================ */
+
 :root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
+  /* Surfaces */
+  --bg: #0a1120;
+  --panel: #0f1a2e;
+  --panel-raised: #16233c;
+  --hairline: #223252;
+
+  /* Text */
+  --text: #e9edf6;
+  --text-dim: #97a6c2;
+  --text-mute: #5f6f8d;
+
+  /* Severity / status */
+  --critical: #fb5c74;
+  --elevated: #f5a524;
+  --stable: #2dd4bf;
+  --live: #8b7cf6;
+
+  /* Interactive / brand */
+  --accent: #7c6df5;
+  --accent-strong: #6d5ae8;
+
+  /* Soft elevation for floating panels */
+  --panel-shadow:
+    0 1px 2px rgba(3, 7, 18, 0.6),
+    0 12px 32px -14px rgba(3, 7, 18, 0.7);
+
+  --background: var(--bg);
+  --foreground: var(--text);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-background: var(--bg);
+  --color-foreground: var(--text);
+
+  --color-bg: var(--bg);
+  --color-panel: var(--panel);
+  --color-panel-raised: var(--panel-raised);
+  --color-hairline: var(--hairline);
+
+  --color-dim: var(--text-dim);
+  --color-mute: var(--text-mute);
+
+  --color-critical: var(--critical);
+  --color-elevated: var(--elevated);
+  --color-stable: var(--stable);
+  --color-live: var(--live);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-/* HEX is a light-theme application.
-   Do not automatically switch the entire UI
-   based on the operating system's dark mode. */
-
 html {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--bg);
+  color: var(--text);
+  color-scheme: dark;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
-
-/* Improve default text rendering and visibility */
 
 h1,
 h2,
@@ -37,7 +83,17 @@ h3,
 h4,
 h5,
 h6 {
-  color: #0f172a;
+  color: var(--text);
+  letter-spacing: -0.015em;
+}
+
+h1 {
+  letter-spacing: -0.025em;
+}
+
+/* Floating-panel elevation utility. */
+.elevated {
+  box-shadow: var(--panel-shadow);
 }
 
 p {
@@ -51,53 +107,91 @@ select {
   font: inherit;
 }
 
-/* Make placeholders readable */
+/* Every number in the app: mono + tabular figures so digits
+   align in columns and currency reads like a terminal. */
+.num {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* Small-caps-style label: wide-tracked upper-case. */
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+/* Form controls on the dark surface */
+input,
+textarea,
+select {
+  color: var(--text);
+  background-color: var(--panel-raised);
+  border-color: var(--hairline);
+}
 
 input::placeholder,
 textarea::placeholder {
-  color: #94a3b8;
+  color: var(--text-mute);
   opacity: 1;
 }
 
-/* Links should remain visible unless Tailwind overrides them */
+/* Tables */
+table {
+  color: var(--text);
+}
+
+th {
+  color: var(--text-dim);
+}
+
+td {
+  color: var(--text);
+}
 
 a {
   color: inherit;
 }
 
-/* Prevent dark-mode browser styling from making controls
-   inconsistent with the HEX light interface */
-
-input,
-textarea,
-select {
-  color: #0f172a;
-  background-color: #ffffff;
-}
-
-/* Better default table readability */
-
-table {
-  color: #0f172a;
-}
-
-th {
-  color: #475569;
-}
-
-td {
-  color: #334155;
-}
-
-/* Improve disabled text without making it vanish */
-
 button:disabled {
   color: inherit;
 }
 
-/* Keep the application consistently light */
+/* Thin instrument-panel scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--hairline) transparent;
+}
 
-html,
-body {
-  color-scheme: light;
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--hairline);
+  border-radius: 999px;
+  border: 2px solid var(--bg);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--accent) 40%, var(--hairline));
+}
+
+::selection {
+  background: color-mix(in srgb, var(--accent) 38%, transparent);
+  color: #fff;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
 }

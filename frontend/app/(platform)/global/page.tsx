@@ -1,22 +1,17 @@
 "use client";
 
-import {
-  useEffect,
-  useState,
-} from "react";
+import { useEffect, useState } from "react";
 
-import {
-  AlertTriangle,
-  CloudRain,
-  DollarSign,
-  Globe2,
-  Wheat,
-} from "lucide-react";
+import { DollarSign, Globe2, Wheat } from "lucide-react";
 
-import {
-  apiRequest,
-} from "@/lib/api";
+import { apiRequest } from "@/lib/api";
+import { signedPercent } from "@/lib/format";
 
+import PageHeader from "@/app/components/PageHeader";
+import Panel from "@/app/components/Panel";
+import SeverityBadge from "@/app/components/SeverityBadge";
+import { EmptyCard, LoadingCard } from "@/app/components/StateCard";
+import { toneForStatus } from "@/app/components/tone";
 
 interface GlobalEvent {
   id: number;
@@ -26,552 +21,234 @@ interface GlobalEvent {
   region?: string;
 }
 
+interface CommodityDatum {
+  latest_value?: number | string;
+  unit?: string;
+  percentage_change?: number;
+}
 
 interface MarketOverview {
-  commodities?: Record<
-    string,
-    any
-  >;
-
-  fx?: Record<
-    string,
-    any
-  >;
+  commodities?: Record<string, CommodityDatum>;
+  fx?: Record<string, unknown>;
 }
 
+interface AgricultureRisk {
+  id?: number;
+  crop?: string;
+  region?: string;
+  severity?: string;
+  signal_type?: string;
+  value?: number | string;
+  unit?: string;
+}
 
 interface AgricultureOverview {
-  risks?: any[];
-  commodity_impact?: any[];
+  risks?: AgricultureRisk[];
+  commodity_impact?: unknown[];
 }
 
-
 export default function GlobalPage() {
+  const [events, setEvents] = useState<GlobalEvent[]>([]);
+  const [market, setMarket] = useState<MarketOverview | null>(null);
+  const [agriculture, setAgriculture] =
+    useState<AgricultureOverview | null>(null);
 
-  const [
-    events,
-    setEvents,
-  ] = useState<GlobalEvent[]>([]);
-
-
-  const [
-    market,
-    setMarket,
-  ] = useState<MarketOverview | null>(
-    null,
-  );
-
-
-  const [
-    agriculture,
-    setAgriculture,
-  ] = useState<AgricultureOverview | null>(
-    null,
-  );
-
-
-  const [
-    loading,
-    setLoading,
-  ] = useState(true);
-
-
-  const [
-    error,
-    setError,
-  ] = useState("");
-
-
-  const [
-    marketError,
-    setMarketError,
-  ] = useState("");
-
-
-  const [
-    agricultureError,
-    setAgricultureError,
-  ] = useState("");
-
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [marketError, setMarketError] = useState("");
+  const [agricultureError, setAgricultureError] = useState("");
 
   useEffect(() => {
-
     async function loadGlobalData() {
-
       setLoading(true);
       setError("");
 
-
       try {
-
-        const eventData =
-          await apiRequest<GlobalEvent[]>(
-            "/global-events/?limit=10",
-          );
-
         setEvents(
-          eventData,
+          await apiRequest<GlobalEvent[]>("/global-events/?limit=10"),
         );
-
       } catch (err) {
-
         setError(
           err instanceof Error
             ? err.message
             : "Unable to load global events.",
         );
-
       }
 
-
       try {
-
-        const marketData =
-          await apiRequest<MarketOverview>(
-            "/market/overview",
-          );
-
-        setMarket(
-          marketData,
-        );
-
+        setMarket(await apiRequest<MarketOverview>("/market/overview"));
       } catch (err) {
-
-        console.error(
-          "Market intelligence error:",
-          err,
-        );
-
+        console.error("Market intelligence error:", err);
         setMarketError(
-          err instanceof Error
-            ? err.message
-            : "Market data unavailable.",
+          err instanceof Error ? err.message : "Market data unavailable.",
         );
-
       }
 
-
       try {
-
-        const agricultureData =
-          await apiRequest<AgricultureOverview>(
-            "/agriculture/overview",
-          );
-
         setAgriculture(
-          agricultureData,
+          await apiRequest<AgricultureOverview>("/agriculture/overview"),
         );
-
       } catch (err) {
-
-        console.error(
-          "Agriculture intelligence error:",
-          err,
-        );
-
+        console.error("Agriculture intelligence error:", err);
         setAgricultureError(
           err instanceof Error
             ? err.message
             : "Agriculture data unavailable.",
         );
-
       }
 
-
       setLoading(false);
-
     }
 
-
     loadGlobalData();
-
   }, []);
 
-
   if (loading) {
-
     return (
-      <div className="p-8">
-        Loading global intelligence...
+      <div className="p-6 lg:p-8">
+        <LoadingCard message="Loading global intelligence…" />
       </div>
     );
   }
 
+  const commodities = Object.entries(market?.commodities ?? {});
+  const risks = (agriculture?.risks ?? []).slice(0, 6);
 
   return (
     <div className="p-6 lg:p-8">
-
-      <div className="mb-8">
-
-        <div className="flex items-center gap-3">
-
-          <div className="rounded-xl bg-slate-900 p-3 text-white">
-
-            <Globe2 size={22} />
-
-          </div>
-
-          <div>
-
-            <p className="text-sm text-slate-500">
-              External Intelligence
-            </p>
-
-            <h1 className="text-3xl font-bold text-slate-900">
-              Global Intelligence
-            </h1>
-
-          </div>
-
-        </div>
-
-
-        <p className="mt-3 text-slate-500">
-
-          Monitor global events, commodities,
-          agriculture and currency signals that
-          may affect your business.
-
-        </p>
-
-      </div>
-
+      <PageHeader
+        icon={Globe2}
+        eyebrow="External Intelligence"
+        title="Global Intelligence"
+        description="Global events, commodities, agriculture and currency signals that may affect your business."
+      />
 
       {error && (
-
-        <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-5 text-red-700">
-
+        <div className="mb-6 rounded-lg border border-critical/30 bg-critical/5 p-3 text-sm text-critical">
           {error}
-
         </div>
-
       )}
 
-
-      {/* GLOBAL EVENTS */}
-
+      {/* Events */}
       <section>
+        <h2 className="eyebrow mb-3">Global Events</h2>
 
-        <div className="mb-4 flex items-center gap-2">
-
-          <Globe2 size={18} />
-
-          <h2 className="text-xl font-semibold">
-            Global Events
-          </h2>
-
-        </div>
-
-
-        <div className="grid gap-4 lg:grid-cols-2">
-
-          {events.length === 0 ? (
-
-            <div className="rounded-2xl border bg-white p-6 text-sm text-slate-500">
-              No global events available.
-            </div>
-
-          ) : (
-
-            events.map(
-              (event) => (
-
-                <div
-                  key={event.id}
-                  className="rounded-2xl border bg-white p-5 shadow-sm"
-                >
-
-                  <div className="flex items-start gap-4">
-
-                    <div className="rounded-xl bg-amber-50 p-3">
-
-                      <AlertTriangle
-                        size={20}
-                        className="text-amber-600"
-                      />
-
-                    </div>
-
-
-                    <div className="min-w-0 flex-1">
-
-                      <h3 className="font-semibold text-slate-900">
-
-                        {event.title}
-
-                      </h3>
-
-
-                      <p className="mt-1 text-sm text-slate-500">
-
-                        {event.event_type}
-
-                        {event.region
-                          ? ` · ${event.region}`
-                          : ""}
-
-                      </p>
-
-                    </div>
-
-
-                    <span className="rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-700">
-
-                      {event.severity}
-
-                    </span>
-
+        {events.length === 0 ? (
+          <EmptyCard message="No global events available." />
+        ) : (
+          <div className="grid gap-4 lg:grid-cols-2">
+            {events.map((event) => (
+              <Panel key={event.id} tone={toneForStatus(event.severity)}>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <h3 className="font-semibold text-white">
+                      {event.title}
+                    </h3>
+                    <p className="num mt-1 text-xs text-mute">
+                      {event.event_type}
+                      {event.region ? ` · ${event.region}` : ""}
+                    </p>
                   </div>
-
+                  <SeverityBadge value={event.severity} />
                 </div>
-
-              ),
-            )
-
-          )}
-
-        </div>
-
+              </Panel>
+            ))}
+          </div>
+        )}
       </section>
 
-
-      {/* MARKET */}
-
+      {/* Market */}
       <section className="mt-10">
-
-        <div className="mb-4 flex items-center gap-2">
-
-          <DollarSign size={18} />
-
-          <h2 className="text-xl font-semibold">
-            Market Intelligence
-          </h2>
-
-        </div>
-
+        <h2 className="eyebrow mb-3 flex items-center gap-2">
+          <DollarSign size={13} /> Market Intelligence
+        </h2>
 
         {marketError ? (
-
-          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-700">
-
+          <div className="rounded-lg border border-elevated/30 bg-elevated/5 p-4 text-sm text-elevated">
             Market intelligence is temporarily unavailable.
-
           </div>
-
+        ) : commodities.length === 0 ? (
+          <EmptyCard message="No commodity data available." />
         ) : (
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {commodities.map(([name, data]) => {
+              const change = Number(data?.percentage_change ?? 0);
+              const tone = change >= 0 ? "stable" : "critical";
 
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-
-            {Object.entries(
-              market?.commodities || {},
-            ).map(
-              ([name, rawData]) => {
-
-                const data =
-                  rawData as any;
-
-                const change =
-                  Number(
-                    data?.percentage_change
-                    ?? 0,
-                  );
-
-                const positive =
-                  change >= 0;
-
-
-                return (
-
-                  <div
-                    key={name}
-                    className="rounded-2xl border bg-white p-5 shadow-sm"
+              return (
+                <Panel key={name} tone={tone}>
+                  <p className="eyebrow">{name}</p>
+                  <p className="num mt-2 text-2xl font-semibold text-white">
+                    {data?.latest_value ?? "—"}
+                  </p>
+                  <p className="mt-0.5 text-xs text-mute">
+                    {data?.unit ?? ""}
+                  </p>
+                  <p
+                    className={`num mt-3 text-sm font-semibold ${
+                      change >= 0 ? "text-stable" : "text-critical"
+                    }`}
                   >
-
-                    <p className="text-sm text-slate-500">
-                      {name}
-                    </p>
-
-
-                    <p className="mt-2 text-2xl font-bold">
-
-                      {data?.latest_value
-                        ?? "-"}
-
-                    </p>
-
-
-                    <p className="mt-1 text-xs text-slate-500">
-
-                      {data?.unit
-                        ?? ""}
-
-                    </p>
-
-
-                    <p
-                      className={`mt-3 text-sm font-semibold ${
-                        positive
-                          ? "text-emerald-600"
-                          : "text-red-600"
-                      }`}
-                    >
-
-                      {positive
-                        ? "+"
-                        : ""}
-
-                      {change.toFixed(2)}%
-
-                    </p>
-
-                  </div>
-
-                );
-
-              },
-            )}
-
+                    {signedPercent(change)}
+                  </p>
+                </Panel>
+              );
+            })}
           </div>
-
         )}
-
       </section>
 
-
-      {/* AGRICULTURE */}
-
+      {/* Agriculture */}
       <section className="mt-10">
-
-        <div className="mb-4 flex items-center gap-2">
-
-          <Wheat size={18} />
-
-          <h2 className="text-xl font-semibold">
-            Agriculture Intelligence
-          </h2>
-
-        </div>
-
+        <h2 className="eyebrow mb-3 flex items-center gap-2">
+          <Wheat size={13} /> Agriculture Intelligence
+        </h2>
 
         {agricultureError ? (
-
-          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-700">
-
+          <div className="rounded-lg border border-elevated/30 bg-elevated/5 p-4 text-sm text-elevated">
             Agriculture intelligence is temporarily unavailable.
-
           </div>
-
+        ) : risks.length === 0 ? (
+          <EmptyCard message="No agriculture signals available." />
         ) : (
-
           <div className="grid gap-4 lg:grid-cols-2">
-
-            {(agriculture?.risks || [])
-              .slice(0, 6)
-              .map(
-                (
-                  risk: any,
-                  index: number,
-                ) => (
-
-                  <div
-                    key={
-                      risk.id
-                      ?? index
-                    }
-                    className="rounded-2xl border bg-white p-5 shadow-sm"
-                  >
-
-                    <div className="flex justify-between gap-4">
-
-                      <div>
-
-                        <p className="font-semibold">
-                          {risk.crop
-                            ?? "Crop"}
-                        </p>
-
-                        <p className="text-sm text-slate-500">
-                          {risk.region
-                            ?? ""}
-                        </p>
-
-                      </div>
-
-
-                      <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
-
-                        {risk.severity
-                          ?? "INFO"}
-
-                      </span>
-
-                    </div>
-
-
-                    <div className="mt-4">
-
-                      <p className="text-sm text-slate-500">
-                        {risk.signal_type
-                          ?? "Signal"}
-                      </p>
-
-
-                      <p className="mt-1 text-xl font-bold">
-
-                        {risk.value
-                          ?? "-"}
-
-                        {risk.unit
-                          ? ` ${risk.unit}`
-                          : ""}
-
-                      </p>
-
-                    </div>
-
+            {risks.map((risk, index) => (
+              <Panel
+                key={risk.id ?? index}
+                tone={toneForStatus(risk.severity)}
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="font-semibold text-white">
+                      {risk.crop ?? "Crop"}
+                    </p>
+                    <p className="text-sm text-dim">{risk.region ?? ""}</p>
                   </div>
+                  <SeverityBadge value={risk.severity ?? "INFO"} />
+                </div>
 
-                ),
-              )}
-
+                <div className="mt-4">
+                  <p className="eyebrow">{risk.signal_type ?? "Signal"}</p>
+                  <p className="num mt-1 text-xl font-semibold text-white">
+                    {risk.value ?? "—"}
+                    {risk.unit ? ` ${risk.unit}` : ""}
+                  </p>
+                </div>
+              </Panel>
+            ))}
           </div>
-
         )}
-
       </section>
-
-
-      {/* SUMMARY */}
 
       <section className="mt-10">
-
-        <div className="mb-4 flex items-center gap-2">
-
-          <CloudRain size={18} />
-
-          <h2 className="text-xl font-semibold">
-            Intelligence Summary
-          </h2>
-
-        </div>
-
-
-        <div className="rounded-2xl border bg-white p-6 shadow-sm">
-
-          <p className="text-slate-600">
-
-            HEX continuously combines external
-            signals with internal business data to
-            determine how global events could
-            affect suppliers, products, routes and
-            financial performance.
-
+        <Panel label="Intelligence Summary" title="How HEX uses these signals" tone="live">
+          <p className="text-sm leading-6 text-dim">
+            HEX continuously combines external signals with internal business
+            data to determine how global events could affect suppliers,
+            products, routes and financial performance.
           </p>
-
-        </div>
-
+        </Panel>
       </section>
-
     </div>
   );
 }

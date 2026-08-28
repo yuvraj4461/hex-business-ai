@@ -4,19 +4,25 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import {
-  AlertOctagon,
+  ArrowRight,
   DollarSign,
+  Loader2,
   Package,
   ShieldAlert,
   Truck,
   Users,
-  Loader2,
   X,
-  ArrowRight,
 } from "lucide-react";
 
 import { apiRequest } from "@/lib/api";
+import { inr, num } from "@/lib/format";
 
+import PageHeader from "@/app/components/PageHeader";
+import Panel from "@/app/components/Panel";
+import SeverityBadge from "@/app/components/SeverityBadge";
+import StatTile from "@/app/components/StatTile";
+import { EmptyCard, LoadingCard } from "@/app/components/StateCard";
+import { toneForStatus } from "@/app/components/tone";
 
 interface Event {
   id: number;
@@ -26,6 +32,27 @@ interface Event {
   region?: string;
 }
 
+interface ExposureRow {
+  route_id?: number;
+  route_name?: string;
+  supplier_id?: number;
+  product_id?: number;
+  delay_days?: number;
+  cost_impact?: number;
+  revenue_at_risk?: number;
+  severity?: string;
+}
+
+interface SupplierRow {
+  supplier_id?: number;
+  route_count?: number;
+  product_count?: number;
+}
+
+interface ProductRow {
+  product_id?: number;
+  delay_days?: number;
+}
 
 interface Exposure {
   event?: {
@@ -35,918 +62,368 @@ interface Exposure {
     severity?: string;
     region?: string;
   };
-
-  exposures?: any[];
-
-  suppliers?: any[];
-
-  products?: any[];
-
+  exposures?: ExposureRow[];
+  suppliers?: SupplierRow[];
+  products?: ProductRow[];
   financial?: {
     total_cost_impact?: number;
     total_revenue_at_risk?: number;
   };
-
   business_risk?: {
     score?: number;
     level?: string;
   };
 }
 
-
 export default function RiskPage() {
-
   const router = useRouter();
 
-
-  const [events, setEvents] =
-    useState<Event[]>([]);
-
-  const [selectedEvent, setSelectedEvent] =
-    useState<Exposure | null>(null);
-
-  const [loading, setLoading] =
-    useState(true);
-
-  const [loadingExposureId, setLoadingExposureId] =
-    useState<number | null>(null);
-
-  const [error, setError] =
-    useState("");
-
-  const [exposureError, setExposureError] =
-    useState("");
-
-
-  // -------------------------------------------------
-  // Load global events
-  // -------------------------------------------------
+  const [events, setEvents] = useState<Event[]>([]);
+  const [selectedEvent, setSelectedEvent] = useState<Exposure | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadingExposureId, setLoadingExposureId] = useState<number | null>(
+    null,
+  );
+  const [error, setError] = useState("");
+  const [exposureError, setExposureError] = useState("");
 
   useEffect(() => {
-
     async function loadEvents() {
-
       try {
-
         setLoading(true);
         setError("");
-
-        const data =
-          await apiRequest<Event[]>(
-            "/global-events/?limit=10"
-          );
-
-        setEvents(data);
-
-      } catch (err) {
-
-        console.error(
-          "Failed to load global events:",
-          err
+        setEvents(
+          await apiRequest<Event[]>("/global-events/?limit=10"),
         );
-
+      } catch (err) {
+        console.error("Failed to load global events:", err);
         setError(
           err instanceof Error
             ? err.message
-            : "Unable to load risk center."
+            : "Unable to load risk center.",
         );
-
       } finally {
-
         setLoading(false);
-
       }
     }
 
     loadEvents();
-
   }, []);
 
-
-  // -------------------------------------------------
-  // Load exposure for selected event
-  // -------------------------------------------------
-
-  async function handleEventClick(
-    eventId: number
-  ) {
-
+  async function handleEventClick(eventId: number) {
     try {
-
-      setLoadingExposureId(
-        eventId
-      );
-
+      setLoadingExposureId(eventId);
       setExposureError("");
-
-      const data =
-        await apiRequest<Exposure>(
-          `/global-exposure/${eventId}`
-        );
-
-      console.log(
-        "Global exposure response:",
-        data
+      const data = await apiRequest<Exposure>(
+        `/global-exposure/${eventId}`,
       );
-
-      setSelectedEvent(
-        data
-      );
-
+      setSelectedEvent(data);
     } catch (err) {
-
-      console.error(
-        "Failed to load event exposure:",
-        err
-      );
-
+      console.error("Failed to load event exposure:", err);
       setExposureError(
         err instanceof Error
           ? err.message
-          : "Unable to load exposure data."
+          : "Unable to load exposure data.",
       );
-
-      setSelectedEvent(
-        null
-      );
-
+      setSelectedEvent(null);
     } finally {
-
-      setLoadingExposureId(
-        null
-      );
-
+      setLoadingExposureId(null);
     }
   }
-
-
-  // -------------------------------------------------
-  // Open full scenario
-  // -------------------------------------------------
 
   function openFullScenario() {
-
-    const eventId =
-      selectedEvent?.event?.id;
-
-    if (!eventId) {
-      return;
-    }
-
-    router.push(
-      `/scenarios?event=${eventId}`
-    );
+    const eventId = selectedEvent?.event?.id;
+    if (!eventId) return;
+    router.push(`/scenarios?event=${eventId}`);
   }
 
-
-  // -------------------------------------------------
-  // Loading page
-  // -------------------------------------------------
-
   if (loading) {
-
     return (
-      <div className="p-8">
-
-        <div className="rounded-2xl border bg-white p-8 text-center shadow-sm">
-
-          <Loader2
-            className="mx-auto animate-spin text-slate-500"
-            size={28}
-          />
-
-          <p className="mt-4 text-slate-500">
-            Loading risk center...
-          </p>
-
-        </div>
-
+      <div className="p-6 lg:p-8">
+        <LoadingCard message="Loading risk center…" />
       </div>
     );
   }
 
-
-  // -------------------------------------------------
-  // Main page
-  // -------------------------------------------------
+  const riskLevel = selectedEvent?.business_risk?.level ?? "LOW";
 
   return (
     <div className="p-6 lg:p-8">
-
-      {/* PAGE HEADER */}
-
-      <div className="mb-8">
-
-        <div className="flex items-center gap-3">
-
-          <div className="rounded-xl bg-red-600 p-3 text-white">
-
-            <ShieldAlert
-              size={22}
-            />
-
-          </div>
-
-          <div>
-
-            <p className="text-sm text-slate-500">
-              Decision Intelligence
-            </p>
-
-            <h1 className="text-3xl font-bold text-slate-900">
-              Risk Center
-            </h1>
-
-          </div>
-
-        </div>
-
-        <p className="mt-3 text-slate-500">
-          Understand how external events translate
-          into operational and financial exposure.
-        </p>
-
-      </div>
-
-
-      {/* GENERAL ERROR */}
+      <PageHeader
+        icon={ShieldAlert}
+        tone="critical"
+        eyebrow="Decision Intelligence"
+        title="Risk Center"
+        description="Understand how external events translate into operational and financial exposure."
+      />
 
       {error && (
-
-        <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-5 text-red-700">
+        <div className="mb-6 rounded-lg border border-critical/30 bg-critical/5 p-3 text-sm text-critical">
           {error}
         </div>
-
       )}
-
-
-      {/* EXPOSURE ERROR */}
 
       {exposureError && (
-
-        <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-5">
-
-          <div className="flex items-start justify-between gap-4">
-
-            <div>
-
-              <p className="font-semibold text-red-800">
-                Unable to load exposure analysis
-              </p>
-
-              <p className="mt-1 text-sm text-red-700">
-                {exposureError}
-              </p>
-
-            </div>
-
-            <button
-              type="button"
-              onClick={() =>
-                setExposureError("")
-              }
-              className="rounded-lg p-1 text-red-600 hover:bg-red-100"
-            >
-              <X size={18} />
-            </button>
-
+        <div className="mb-6 flex items-start justify-between gap-4 rounded-lg border border-critical/30 bg-critical/5 p-3">
+          <div>
+            <p className="font-semibold text-critical">
+              Unable to load exposure analysis
+            </p>
+            <p className="mt-1 text-sm text-dim">{exposureError}</p>
           </div>
-
+          <button
+            type="button"
+            onClick={() => setExposureError("")}
+            className="rounded-lg p-1 text-critical hover:bg-critical/10"
+          >
+            <X size={16} />
+          </button>
         </div>
-
       )}
 
-
-      {/* EVENTS */}
-
       <section>
-
-        <div className="mb-4">
-
-          <h2 className="text-xl font-semibold text-slate-900">
-            Global Events
-          </h2>
-
-          <p className="mt-1 text-sm text-slate-500">
-            Select an event to analyze its impact
-            on your business.
-          </p>
-
-        </div>
-
+        <h2 className="eyebrow mb-1">Global Events</h2>
+        <p className="mb-4 text-sm text-dim">
+          Select an event to analyze its impact on your business.
+        </p>
 
         {events.length === 0 ? (
-
-          <div className="rounded-2xl border bg-white p-8 text-center shadow-sm">
-
-            <p className="text-slate-500">
-              No global events available.
-            </p>
-
-          </div>
-
+          <EmptyCard message="No global events available." />
         ) : (
-
           <div className="grid gap-4 lg:grid-cols-2">
+            {events.map((event) => {
+              const isLoading = loadingExposureId === event.id;
+              const isSelected = selectedEvent?.event?.id === event.id;
 
-            {events.map(
-              (event) => {
-
-                const isLoading =
-                  loadingExposureId
-                  === event.id;
-
-                const isSelected =
-                  selectedEvent?.event?.id
-                  === event.id;
-
-
-                return (
-
-                  <div
-                    key={event.id}
-                    className={`rounded-2xl border bg-white p-5 shadow-sm transition ${
-                      isSelected
-                        ? "border-red-400 ring-2 ring-red-100"
-                        : "border-slate-200"
-                    }`}
-                  >
-
-                    <div className="flex items-center gap-4">
-
-                      <div className="rounded-xl bg-red-50 p-3">
-
-                        <AlertOctagon
-                          size={21}
-                          className="text-red-600"
-                        />
-
-                      </div>
-
-
-                      <div className="min-w-0 flex-1">
-
-                        <p className="font-semibold text-slate-900">
-                          {event.title}
-                        </p>
-
-                        <p className="mt-1 text-sm text-slate-500">
-
-                          {event.event_type}
-
-                          {event.region
-                            ? ` · ${event.region}`
-                            : ""}
-
-                        </p>
-
-                      </div>
-
-
-                      <span className="rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-700">
-                        {event.severity}
-                      </span>
-
+              return (
+                <Panel
+                  key={event.id}
+                  tone={toneForStatus(event.severity)}
+                  className={
+                    isSelected ? "ring-1 ring-critical/40" : undefined
+                  }
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <p className="font-semibold text-white">
+                        {event.title}
+                      </p>
+                      <p className="num mt-1 text-xs text-mute">
+                        {event.event_type}
+                        {event.region ? ` · ${event.region}` : ""}
+                      </p>
                     </div>
-
-
-                    <button
-                      type="button"
-                      disabled={isLoading}
-                      onClick={() =>
-                        handleEventClick(
-                          event.id
-                        )
-                      }
-                      className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-
-                      {isLoading ? (
-                        <>
-                          <Loader2
-                            size={17}
-                            className="animate-spin"
-                          />
-
-                          Analyzing exposure...
-                        </>
-                      ) : isSelected ? (
-                        <>
-                          <ShieldAlert
-                            size={17}
-                          />
-
-                          Exposure Loaded
-                        </>
-                      ) : (
-                        <>
-                          <ShieldAlert
-                            size={17}
-                          />
-
-                          Analyze Business Impact
-                        </>
-                      )}
-
-                    </button>
-
+                    <SeverityBadge value={event.severity} />
                   </div>
 
-                );
-
-              }
-            )}
-
+                  <button
+                    type="button"
+                    disabled={isLoading}
+                    onClick={() => handleEventClick(event.id)}
+                    className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-bg transition hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 size={15} className="animate-spin" />
+                        Analyzing exposure…
+                      </>
+                    ) : isSelected ? (
+                      "Exposure loaded"
+                    ) : (
+                      "Analyze business impact"
+                    )}
+                  </button>
+                </Panel>
+              );
+            })}
           </div>
-
         )}
-
       </section>
 
-
-      {/* SELECTED EVENT DETAILS */}
-
       {selectedEvent && (
-
         <section className="mt-10">
-
-          {/* SELECTED EVENT */}
-
-          <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-6">
-
-            <p className="text-sm font-medium text-red-600">
-              Selected Event
-            </p>
-
-            <h2 className="mt-1 text-2xl font-bold text-slate-900">
-              {selectedEvent.event?.title ||
-                "Global Event"}
-            </h2>
-
-            <p className="mt-2 text-sm text-slate-500">
-
-              {selectedEvent.event?.type ||
-                "UNKNOWN"}
-
+          <Panel
+            tone={toneForStatus(selectedEvent.event?.severity)}
+            label="Selected Event"
+            title={selectedEvent.event?.title ?? "Global Event"}
+          >
+            <p className="num text-sm text-mute">
+              {selectedEvent.event?.type ?? "UNKNOWN"}
               {" · "}
-
-              {selectedEvent.event?.severity ||
-                "UNKNOWN"}
-
+              {selectedEvent.event?.severity ?? "UNKNOWN"}
               {selectedEvent.event?.region
                 ? ` · ${selectedEvent.event.region}`
                 : ""}
-
             </p>
+          </Panel>
 
+          <div className="mt-5 grid gap-4 md:grid-cols-3">
+            <StatTile
+              label="Revenue at Risk"
+              value={inr(
+                selectedEvent.financial?.total_revenue_at_risk,
+              )}
+              icon={DollarSign}
+              tone="critical"
+            />
+            <StatTile
+              label="Affected Routes"
+              value={num(selectedEvent.exposures?.length ?? 0)}
+              icon={Truck}
+              tone="elevated"
+            />
+            <StatTile
+              label="Business Risk"
+              value={riskLevel}
+              delta={`score ${num(
+                selectedEvent.business_risk?.score ?? 0,
+              )}/100`}
+              deltaTone={toneForStatus(riskLevel)}
+              icon={ShieldAlert}
+              tone={toneForStatus(riskLevel)}
+            />
           </div>
 
-
-          {/* KPI CARDS */}
-
-          <div className="grid gap-5 md:grid-cols-3">
-
-
-            {/* REVENUE AT RISK */}
-
-            <div className="rounded-2xl border bg-white p-6 shadow-sm">
-
-              <div className="w-fit rounded-xl bg-red-50 p-3">
-
-                <DollarSign
-                  size={21}
-                  className="text-red-600"
-                />
-
-              </div>
-
-              <p className="mt-5 text-sm text-slate-500">
-                Revenue at Risk
-              </p>
-
-              <p className="mt-1 text-3xl font-bold text-slate-900">
-
-                ₹
-                {Number(
-                  selectedEvent.financial
-                    ?.total_revenue_at_risk
-                  || 0
-                ).toLocaleString(
-                  "en-IN"
-                )}
-
-              </p>
-
-            </div>
-
-
-            {/* AFFECTED ROUTES */}
-
-            <div className="rounded-2xl border bg-white p-6 shadow-sm">
-
-              <div className="w-fit rounded-xl bg-orange-50 p-3">
-
-                <Truck
-                  size={21}
-                  className="text-orange-600"
-                />
-
-              </div>
-
-              <p className="mt-5 text-sm text-slate-500">
-                Affected Routes
-              </p>
-
-              <p className="mt-1 text-3xl font-bold text-slate-900">
-                {
-                  selectedEvent.exposures
-                    ?.length
-                  || 0
-                }
-              </p>
-
-            </div>
-
-
-            {/* BUSINESS RISK */}
-
-            <div className="rounded-2xl border bg-white p-6 shadow-sm">
-
-              <div className="w-fit rounded-xl bg-red-50 p-3">
-
-                <ShieldAlert
-                  size={21}
-                  className="text-red-600"
-                />
-
-              </div>
-
-              <p className="mt-5 text-sm text-slate-500">
-                Business Risk
-              </p>
-
-              <p className="mt-1 text-3xl font-bold text-slate-900">
-                {
-                  selectedEvent.business_risk
-                    ?.level
-                  || "LOW"
-                }
-              </p>
-
-              <p className="mt-1 text-sm text-slate-500">
-                Score:{" "}
-                {
-                  selectedEvent.business_risk
-                    ?.score
-                  ?? 0
-                }
-                /100
-              </p>
-
-            </div>
-
-          </div>
-
-
-          {/* SUPPLIERS + PRODUCTS */}
-
-          <div className="mt-8 grid gap-6 lg:grid-cols-2">
-
-
-            {/* SUPPLIERS */}
-
-            <div className="rounded-2xl border bg-white p-6 shadow-sm">
-
-              <div className="flex items-center gap-3">
-
-                <div className="rounded-xl bg-blue-50 p-3">
-
-                  <Users
-                    size={20}
-                    className="text-blue-600"
-                  />
-
-                </div>
-
-                <div>
-
-                  <h2 className="font-semibold text-slate-900">
-                    Affected Suppliers
-                  </h2>
-
-                  <p className="text-sm text-slate-500">
-                    Suppliers exposed to this event
-                  </p>
-
-                </div>
-
-              </div>
-
-
-              <div className="mt-5 space-y-3">
-
-                {(selectedEvent.suppliers || [])
-                  .length === 0 ? (
-
-                  <div className="rounded-xl bg-slate-50 p-5 text-sm text-slate-500">
-                    No affected suppliers found.
-                  </div>
-
-                ) : (
-
-                  selectedEvent.suppliers?.map(
-                    (supplier: any) => (
-
-                      <div
-                        key={
-                          supplier.supplier_id
-                        }
-                        className="rounded-xl bg-slate-50 p-4"
-                      >
-
-                        <p className="font-medium text-slate-900">
-                          Supplier #
-                          {supplier.supplier_id}
-                        </p>
-
-                        <p className="mt-1 text-sm text-slate-500">
-
-                          {supplier.route_count}
-                          {" "}routes
-                          {" · "}
-                          {supplier.product_count}
-                          {" "}products
-
-                        </p>
-
-                      </div>
-
-                    )
-                  )
-
-                )}
-
-              </div>
-
-            </div>
-
-
-            {/* PRODUCTS */}
-
-            <div className="rounded-2xl border bg-white p-6 shadow-sm">
-
-              <div className="flex items-center gap-3">
-
-                <div className="rounded-xl bg-purple-50 p-3">
-
-                  <Package
-                    size={20}
-                    className="text-purple-600"
-                  />
-
-                </div>
-
-                <div>
-
-                  <h2 className="font-semibold text-slate-900">
-                    Affected Products
-                  </h2>
-
-                  <p className="text-sm text-slate-500">
-                    Products exposed to the disruption
-                  </p>
-
-                </div>
-
-              </div>
-
-
-              <div className="mt-5 space-y-3">
-
-                {(selectedEvent.products || [])
-                  .length === 0 ? (
-
-                  <div className="rounded-xl bg-slate-50 p-5 text-sm text-slate-500">
-                    No affected products found.
-                  </div>
-
-                ) : (
-
-                  selectedEvent.products?.map(
-                    (product: any) => (
-
-                      <div
-                        key={
-                          product.product_id
-                        }
-                        className="rounded-xl bg-slate-50 p-4"
-                      >
-
-                        <p className="font-medium text-slate-900">
-                          Product #
-                          {product.product_id}
-                        </p>
-
-                        <p className="mt-1 text-sm text-slate-500">
-                          Delay:{" "}
-                          {product.delay_days}
-                          {" "}days
-                        </p>
-
-                      </div>
-
-                    )
-                  )
-
-                )}
-
-              </div>
-
-            </div>
-
-          </div>
-
-
-          {/* EXPOSURE TABLE */}
-
-          <div className="mt-8 rounded-2xl border bg-white p-6 shadow-sm">
-
-            <h2 className="font-semibold text-slate-900">
-              Exposure Details
-            </h2>
-
-            <p className="mt-1 text-sm text-slate-500">
-              Route-level impact detected by HEX.
-            </p>
-
-
-            <div className="mt-5 overflow-x-auto">
-
-              {(selectedEvent.exposures || [])
-                .length === 0 ? (
-
-                <div className="rounded-xl bg-slate-50 p-5 text-sm text-slate-500">
-                  No individual route exposures returned
-                  by the backend.
-                </div>
-
+          <div className="mt-5 grid gap-5 lg:grid-cols-2">
+            <Panel
+              label="Exposed"
+              title="Affected Suppliers"
+              tone="live"
+              action={<Users size={18} className="text-dim" />}
+            >
+              {(selectedEvent.suppliers ?? []).length === 0 ? (
+                <p className="rounded-lg bg-panel-raised p-4 text-sm text-dim">
+                  No affected suppliers found.
+                </p>
               ) : (
+                <div className="space-y-2.5">
+                  {selectedEvent.suppliers?.map((supplier) => (
+                    <div
+                      key={supplier.supplier_id}
+                      className="rounded-lg bg-panel-raised p-3"
+                    >
+                      <p className="font-medium text-white">
+                        Supplier #{supplier.supplier_id}
+                      </p>
+                      <p className="num mt-1 text-xs text-mute">
+                        {num(supplier.route_count)} routes ·{" "}
+                        {num(supplier.product_count)} products
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Panel>
 
-                <table className="w-full text-left text-sm">
+            <Panel
+              label="Exposed"
+              title="Affected Products"
+              tone="live"
+              action={<Package size={18} className="text-dim" />}
+            >
+              {(selectedEvent.products ?? []).length === 0 ? (
+                <p className="rounded-lg bg-panel-raised p-4 text-sm text-dim">
+                  No affected products found.
+                </p>
+              ) : (
+                <div className="space-y-2.5">
+                  {selectedEvent.products?.map((product) => (
+                    <div
+                      key={product.product_id}
+                      className="rounded-lg bg-panel-raised p-3"
+                    >
+                      <p className="font-medium text-white">
+                        Product #{product.product_id}
+                      </p>
+                      <p className="num mt-1 text-xs text-mute">
+                        Delay: {num(product.delay_days)} days
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Panel>
+          </div>
 
-                  <thead>
-
-                    <tr className="border-b text-slate-500">
-
-                      <th className="px-3 py-3">
-                        Route
-                      </th>
-
-                      <th className="px-3 py-3">
-                        Supplier
-                      </th>
-
-                      <th className="px-3 py-3">
-                        Product
-                      </th>
-
-                      <th className="px-3 py-3">
-                        Delay
-                      </th>
-
-                      <th className="px-3 py-3">
-                        Cost Impact
-                      </th>
-
-                      <th className="px-3 py-3">
-                        Revenue Risk
-                      </th>
-
-                      <th className="px-3 py-3">
-                        Severity
-                      </th>
-
-                    </tr>
-
-                  </thead>
-
-
-                  <tbody>
-
-                    {selectedEvent.exposures?.map(
-                      (
-                        exposure: any,
-                        index: number
-                      ) => (
-
+          <div className="mt-5">
+            <Panel label="Route-level" title="Exposure Details" tone="critical">
+              {(selectedEvent.exposures ?? []).length === 0 ? (
+                <p className="rounded-lg bg-panel-raised p-4 text-sm text-dim">
+                  No individual route exposures returned by the backend.
+                </p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm">
+                    <thead>
+                      <tr className="border-b border-hairline">
+                        {[
+                          "Route",
+                          "Supplier",
+                          "Product",
+                          "Delay",
+                          "Cost Impact",
+                          "Revenue Risk",
+                          "Severity",
+                        ].map((h) => (
+                          <th
+                            key={h}
+                            className="eyebrow px-3 py-2.5 font-semibold"
+                          >
+                            {h}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedEvent.exposures?.map((exposure, index) => (
                         <tr
-                          key={
-                            exposure.route_id
-                            ?? index
-                          }
-                          className="border-b last:border-0"
+                          key={exposure.route_id ?? index}
+                          className="border-b border-hairline last:border-0"
                         >
-
-                          <td className="px-3 py-4">
-
-                            {exposure.route_name ||
+                          <td className="px-3 py-3">
+                            {exposure.route_name ??
                               `Route #${exposure.route_id}`}
-
                           </td>
-
-                          <td className="px-3 py-4">
+                          <td className="num px-3 py-3">
                             #{exposure.supplier_id}
                           </td>
-
-                          <td className="px-3 py-4">
+                          <td className="num px-3 py-3">
                             #{exposure.product_id}
                           </td>
-
-                          <td className="px-3 py-4">
-                            {exposure.delay_days}
-                            {" "}days
+                          <td className="num px-3 py-3">
+                            {num(exposure.delay_days)} days
                           </td>
-
-                          <td className="px-3 py-4">
-
-                            ₹
-                            {Number(
-                              exposure.cost_impact
-                              || 0
-                            ).toLocaleString(
-                              "en-IN"
-                            )}
-
+                          <td className="num px-3 py-3">
+                            {inr(exposure.cost_impact)}
                           </td>
-
-                          <td className="px-3 py-4">
-
-                            ₹
-                            {Number(
-                              exposure.revenue_at_risk
-                              || 0
-                            ).toLocaleString(
-                              "en-IN"
-                            )}
-
+                          <td className="num px-3 py-3">
+                            {inr(exposure.revenue_at_risk)}
                           </td>
-
-                          <td className="px-3 py-4">
-
-                            <span className="rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-700">
-
-                              {exposure.severity ||
-                                "UNKNOWN"}
-
-                            </span>
-
+                          <td className="px-3 py-3">
+                            <SeverityBadge value={exposure.severity} />
                           </td>
-
                         </tr>
-
-                      )
-                    )}
-
-                  </tbody>
-
-                </table>
-
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
-
-            </div>
-
+            </Panel>
           </div>
 
-
-          {/* FULL SCENARIO BUTTON */}
-
-          <div className="mt-8 flex justify-end">
-
+          <div className="mt-6 flex justify-end">
             <button
               type="button"
-              disabled={
-                !selectedEvent.event?.id
-              }
-              onClick={
-                openFullScenario
-              }
-              className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={!selectedEvent.event?.id}
+              onClick={openFullScenario}
+              className="inline-flex items-center gap-2 rounded-lg bg-accent px-5 py-2.5 text-sm font-semibold text-bg transition hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
             >
-
-              View Full Scenario
-
-              <ArrowRight
-                size={18}
-              />
-
+              View full scenario
+              <ArrowRight size={16} />
             </button>
-
           </div>
-
         </section>
-
       )}
-
     </div>
   );
 }
