@@ -4,34 +4,55 @@ Backend + Postgres on **Render**, frontend on **Vercel**. Both free tier.
 
 ---
 
-## 1. Backend + database — Render
+## 1. Backend — update the existing Render service
 
-### Option A: Blueprint (recommended)
+You already have **`hex-business-ai backend`** (native Python 3, free) and
+**`hex-postgres`** (free, expires ~Sept 22). Update in place — don't run the
+blueprint (it would make a duplicate).
 
-1. Render dashboard → **New → Blueprint** → connect `yuvraj4461/hex-business-ai`.
-2. Render reads [`render.yaml`](render.yaml) and creates:
-   - `hex-db` — free Postgres
-   - `hex-api` — Docker web service built from [`backend/Dockerfile`](backend/Dockerfile)
-   - `DATABASE_URL`, `JWT_SECRET_KEY`, `HEX_SECRET_KEY` are wired automatically.
-3. First deploy runs `python bootstrap.py` (creates the schema on the fresh DB)
-   then `uvicorn`.
-4. Once it's live, in the `hex-api` service → **Environment**:
-   - `GEMINI_API_KEY` = your Google AI Studio key (AI features need it; the app
-     still runs without it and degrades gracefully).
-   - `FRONTEND_URL` = your Vercel URL (fill in after step 2). Comma-separate
-     multiple.
-5. Health check: `https://hex-api-XXXX.onrender.com/health` → `{"status":"ok"}`.
+### `hex-business-ai backend` → Settings
 
-### Option B: existing Render Postgres
+| Setting | Value |
+|---|---|
+| Root Directory | `backend` |
+| Build Command | `pip install -r requirements.txt` |
+| Start Command | `python bootstrap.py && uvicorn main:app --host 0.0.0.0 --port $PORT` |
+| Health Check Path | `/health` |
+| Auto-Deploy | **re-enable it** (currently off) so pushes to `main` deploy |
 
-If your earlier Render database (`hex_postgres_9wqp`) still exists, skip the
-blueprint's DB: create just the web service, set `DATABASE_URL` to that DB's
-**Internal Connection String**. `bootstrap.py` detects the existing tables and
-runs only the new migrations.
+### → Environment  (add these; keep the ones you have)
 
-### Seed data (fresh DB only)
+| Key | Value |
+|---|---|
+| `HEX_SECRET_KEY` | a Fernet key — `python -c "from cryptography.fernet import Fernet;print(Fernet.generate_key().decode())"` |
+| `FRONTEND_URL` | `https://hex-business-ai.vercel.app` (your Vercel **production** URL, no slash) |
+| `GEMINI_MODEL` | `gemini-3.6-flash` (or a model your key has quota for) |
+| `HEX_SCHEDULER_ENABLED` | `true` |
+| `WEB_CONCURRENCY` | `1` |
 
-A fresh DB has no users. From the Render service **Shell**:
+Then **Manual Deploy → Deploy latest commit**.
+
+`bootstrap.py` runs first: your DB has the 26 base tables but no Alembic
+history, so it runs every migration (all additive — adds the `connections`,
+`raw_records`, `purchase_orders`, `shipments` tables and provenance columns
+to the existing ones). Your existing data is kept.
+
+### `render.yaml`
+
+[`render.yaml`](render.yaml) documents these same settings and can recreate the
+services from scratch if the free DB expires. [`backend/Dockerfile`](backend/Dockerfile)
+also works if you switch the service runtime to Docker.
+
+### Seed / reset a login
+
+From the Render service **Shell**:
+
+```bash
+# reset the admin password if you don't know it
+python -c "from app.database.connection import SessionLocal; from app.models.user import User; from app.security.auth import hash_password; d=SessionLocal(); u=d.query(User).filter(User.email=='admin@hex.com').first(); u.password_hash=hash_password('hexdemo123'); d.commit(); print('done')"
+```
+
+For a fresh DB with no data, from the **Shell**:
 
 ```bash
 python demo_data/generate_demo_data.py     # demo orgs + transactions/orders/etc.
@@ -45,16 +66,16 @@ Or just hit `POST /auth/register` from the deployed `/docs` to make a new org.
 
 ---
 
-## 2. Frontend — Vercel
+## 2. Frontend — Vercel (already set up)
 
-1. Vercel → **Add New → Project** → import `yuvraj4461/hex-business-ai`.
-2. **Root Directory:** `frontend`  (important — it's a monorepo).
-3. Framework preset: **Next.js** (auto-detected).
-4. **Environment Variables:**
-   - `NEXT_PUBLIC_API_URL` = `https://hex-api-XXXX.onrender.com` (your Render URL,
-     no trailing slash). This is baked in at build time.
-5. Deploy. Then go back to Render and set `FRONTEND_URL` to the Vercel URL, so
-   CORS allows it. (`*.vercel.app` preview URLs are already allowed by regex.)
+The `hex-business-ai` Vercel project auto-deploys from `main` and is live at
+`hex-business-ai.vercel.app`. It has one env var, `NEXT_PUBLIC_API_URL` —
+confirm it is exactly `https://hex-business-ai-backend.onrender.com` (no
+trailing slash). If you change it, **redeploy** (it's baked in at build time).
+
+Preview URLs (`*.vercel.app`) are already allowed by the backend's CORS regex,
+so the "Failed to fetch" on login goes away once the backend is redeployed
+with the new code.
 
 ---
 
@@ -62,8 +83,8 @@ Or just hit `POST /auth/register` from the deployed `/docs` to make a new org.
 
 | Area | Behaviour | Fix for production |
 |---|---|---|
-| Render free web service | Sleeps after 15 min idle; first request after is slow. Background auto-sync doesn't run while asleep. | Paid instance, or an external cron pinging `/health`. |
-| Render free Postgres | Expires ~90 days after creation. | Paid Postgres or another provider (Neon, Supabase). |
+| Render free web service | Sleeps after 15 min idle; first request after is a ~50s cold start. Background auto-sync doesn't run while asleep. | Paid instance, or an external cron pinging `/health`. |
+| Render free Postgres | Expires 30 days after creation (yours: ~Sept 22). | Paid Postgres or another provider (Neon, Supabase). |
 | Uploaded files | Stored on the container's ephemeral disk — lost on every redeploy. Normalised data survives in Postgres; raw payloads survive in `raw_records`. | Object storage (S3/R2) behind the file-upload adapter. |
 | Gemini | Rate-limited on free quota; copilot/scenario answers fall back to a non-AI summary. | A key with quota. |
 | Auth | JWT in `localStorage`, no rate limiting. | Add rate limiting (`slowapi`), consider httpOnly cookies. |
