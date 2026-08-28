@@ -41,5 +41,13 @@ services:
         value: "true"
       - key: HEX_SYNC_INTERVAL_MINUTES
         value: "30"
+      - key: HEX_WORLD_WATCH_ENABLED
+        value: "true"
+      - key: HEX_WORLD_WATCH_MINUTES
+        value: "20"
+      - key: HEX_CRON_TOKEN
+        generateValue: true
+      - key: TAVILY_API_KEY
+        sync: false          # set in the dashboard
       - key: WEB_CONCURRENCY
         value: "1"           # 1 worker: the auto-sync scheduler runs in-process

@@ -45,6 +45,12 @@ AGENT_REQUIREMENTS = {
         "description": "Inventory, suppliers and supply-route health",
         "tables": ["inventory", "suppliers"],
     },
+    "watch": {
+        "description": (
+            "Real-time disruption, tariff, FX and price-shock monitoring"
+        ),
+        "tables": ["global_events"],
+    },
     "risk": {
         "description": "Global event exposure and risk scoring",
         "tables": ["global_events", "business_exposures"],

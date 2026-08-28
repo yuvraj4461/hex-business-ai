@@ -68,6 +68,10 @@ from app.api.merge import (
     router as merge_router,
 )
 
+from app.api.intelligence import (
+    router as intelligence_router,
+)
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     bootstrap_on_startup()
@@ -183,6 +187,10 @@ app.include_router(
 
 app.include_router(
     merge_router
+)
+
+app.include_router(
+    intelligence_router
 )
 
 @app.get("/")

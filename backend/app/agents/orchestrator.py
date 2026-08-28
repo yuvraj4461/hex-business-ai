@@ -26,10 +26,12 @@ logger = logging.getLogger(__name__)
 
 
 # Order matters: later agents read findings produced by earlier ones.
+# "watch" runs before "risk" so risk sees the live disruption findings.
 AGENT_SEQUENCE = [
     "finance",
     "sales",
     "operations",
+    "watch",
     "risk",
 ]
 
@@ -38,6 +40,7 @@ AGENT_LABELS = {
     "finance": "Finance Agent",
     "sales": "Sales Agent",
     "operations": "Operations Agent",
+    "watch": "World Watch Agent",
     "risk": "Risk Agent",
 }
 
@@ -169,11 +172,13 @@ def build_graph(db):
     from app.agents.operations_agent import operations_agent
     from app.agents.risk_agent import risk_agent
     from app.agents.sales_agent import sales_agent
+    from app.agents.watch_agent import watch_agent
 
     agent_functions = {
         "finance": finance_agent,
         "sales": sales_agent,
         "operations": operations_agent,
+        "watch": watch_agent,
         "risk": risk_agent,
     }
 

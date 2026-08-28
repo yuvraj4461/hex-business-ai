@@ -1,9 +1,13 @@
-"""Background auto-sync.
+"""Background jobs.
 
-One APScheduler job runs every ``HEX_SYNC_INTERVAL_MINUTES`` and syncs any
-ACTIVE connection whose ``config.auto_sync`` is not False and whose
-``last_sync_at`` is older than the interval. Disabled with
-``HEX_SCHEDULER_ENABLED=false`` (and under pytest).
+- auto-sync: every ``HEX_SYNC_INTERVAL_MINUTES``, sync ACTIVE connections
+  whose ``config.auto_sync`` is not False and are older than the interval.
+- world-watch: every ``HEX_WORLD_WATCH_MINUTES``, run the intelligence
+  collector. An external cron hitting ``/intelligence/refresh`` covers the
+  gaps while a free instance is asleep.
+
+Disabled with ``HEX_SCHEDULER_ENABLED=false`` (and under pytest);
+world-watch also honours ``HEX_WORLD_WATCH_ENABLED``.
 """
 
 from __future__ import annotations
@@ -22,8 +26,22 @@ from app.models.connection import Connection
 logger = logging.getLogger(__name__)
 
 INTERVAL_MINUTES = int(os.getenv("HEX_SYNC_INTERVAL_MINUTES", "30"))
+WORLD_WATCH_MINUTES = int(os.getenv("HEX_WORLD_WATCH_MINUTES", "20"))
 
 _scheduler: BackgroundScheduler | None = None
+
+
+def _run_world_watch() -> None:
+    from app.intelligence.watcher import run_world_watch
+
+    db = SessionLocal()
+    try:
+        run_world_watch(db)
+    except Exception:  # noqa: BLE001
+        logger.exception("world-watch job failed")
+        db.rollback()
+    finally:
+        db.close()
 
 
 def _due(connection: Connection, cutoff: datetime) -> bool:
@@ -78,6 +96,20 @@ def start_scheduler() -> None:
         coalesce=True,
         id="hex_auto_sync",
     )
+
+    if os.getenv("HEX_WORLD_WATCH_ENABLED", "true").lower() != "false":
+        _scheduler.add_job(
+            _run_world_watch,
+            "interval",
+            minutes=WORLD_WATCH_MINUTES,
+            max_instances=1,
+            coalesce=True,
+            id="hex_world_watch",
+        )
+        logger.info(
+            "World Watch job scheduled (every %s min).", WORLD_WATCH_MINUTES
+        )
+
     _scheduler.start()
     logger.info(
         "Auto-sync scheduler started (every %s min).", INTERVAL_MINUTES

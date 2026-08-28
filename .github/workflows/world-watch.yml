@@ -1,0 +1,23 @@
+name: World Watch
+
+# Keeps HEX's real-time intelligence fresh (and the free Render instance warm).
+# Repo secrets required:
+#   HEX_API_URL    e.g. https://hex-business-ai-backend.onrender.com
+#   HEX_CRON_TOKEN must match the backend's HEX_CRON_TOKEN env var
+
+on:
+  schedule:
+    - cron: "*/20 * * * *"
+  workflow_dispatch:
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger /intelligence/refresh
+        run: |
+          code=$(curl -s -o /tmp/r -w "%{http_code}" --max-time 120 \
+            -X POST "${{ secrets.HEX_API_URL }}/intelligence/refresh" \
+            -H "X-HEX-Cron-Token: ${{ secrets.HEX_CRON_TOKEN }}")
+          echo "HTTP $code"; cat /tmp/r; echo
+          test "$code" = "202"

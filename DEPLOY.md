@@ -66,6 +66,28 @@ Or just hit `POST /auth/register` from the deployed `/docs` to make a new org.
 
 ---
 
+## 1b. World Watch — real-time intelligence cron
+
+The backend collects GDELT events + FX + web-search news on a schedule.
+On the free tier it only runs while the instance is awake, so an external
+cron covers the gaps (and keeps it warm).
+
+1. Render `hex-api` **Environment**: set `HEX_CRON_TOKEN` (any long random
+   string) and — for the web-search agent — `TAVILY_API_KEY`
+   ([tavily.com](https://tavily.com), free ~1000 searches/mo). Without the
+   Tavily key the price/tariff/inflation search is skipped; GDELT + FX still run.
+2. GitHub repo → **Settings → Secrets and variables → Actions**:
+   - `HEX_API_URL` = `https://hex-business-ai-backend.onrender.com`
+   - `HEX_CRON_TOKEN` = the same value you set on Render
+3. The [`.github/workflows/world-watch.yml`](.github/workflows/world-watch.yml)
+   workflow then POSTs `/intelligence/refresh` every 20 min. Run it once
+   manually (**Actions → World Watch → Run workflow**) to verify.
+4. Check `GET /intelligence/status` and the **Global Intelligence → Live Feed**
+   page.
+
+(cron-job.org works too — POST to `/intelligence/refresh` with header
+`X-HEX-Cron-Token: <token>`.)
+
 ## 2. Frontend — Vercel (already set up)
 
 The `hex-business-ai` Vercel project auto-deploys from `main` and is live at

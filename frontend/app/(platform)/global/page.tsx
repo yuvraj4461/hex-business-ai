@@ -2,7 +2,15 @@
 
 import { useEffect, useState } from "react";
 
-import { DollarSign, Globe2, Wheat } from "lucide-react";
+import {
+  DollarSign,
+  ExternalLink,
+  Globe2,
+  Loader2,
+  RefreshCw,
+  Radar,
+  Wheat,
+} from "lucide-react";
 
 import { apiRequest } from "@/lib/api";
 import { signedPercent } from "@/lib/format";
@@ -19,6 +27,33 @@ interface GlobalEvent {
   event_type: string;
   severity: string;
   region?: string;
+}
+
+interface FeedItem {
+  id: number;
+  source: string;
+  event_type: string;
+  title: string;
+  summary?: string | null;
+  severity: string;
+  region?: string | null;
+  url?: string | null;
+  sources: { title?: string; url?: string }[];
+  detected_at?: string | null;
+}
+
+interface FeedStatus {
+  last_run_at: string | null;
+  high_events_24h: number;
+}
+
+function timeAgo(iso?: string | null): string {
+  if (!iso) return "never";
+  const secs = Math.round((Date.now() - new Date(iso).getTime()) / 1000);
+  if (secs < 60) return "just now";
+  if (secs < 3600) return `${Math.round(secs / 60)}m ago`;
+  if (secs < 86400) return `${Math.round(secs / 3600)}h ago`;
+  return `${Math.round(secs / 86400)}d ago`;
 }
 
 interface CommodityDatum {
@@ -52,16 +87,46 @@ export default function GlobalPage() {
   const [market, setMarket] = useState<MarketOverview | null>(null);
   const [agriculture, setAgriculture] =
     useState<AgricultureOverview | null>(null);
+  const [feed, setFeed] = useState<FeedItem[]>([]);
+  const [feedStatus, setFeedStatus] = useState<FeedStatus | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [marketError, setMarketError] = useState("");
   const [agricultureError, setAgricultureError] = useState("");
 
+  async function loadFeed() {
+    try {
+      const [items, status] = await Promise.all([
+        apiRequest<FeedItem[]>("/intelligence/feed?limit=20"),
+        apiRequest<FeedStatus>("/intelligence/status"),
+      ]);
+      setFeed(items);
+      setFeedStatus(status);
+    } catch {
+      /* feed is optional */
+    }
+  }
+
+  async function refreshFeed() {
+    setRefreshing(true);
+    try {
+      await apiRequest("/intelligence/refresh-now", { method: "POST" });
+      await loadFeed();
+    } catch {
+      /* ignore */
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
   useEffect(() => {
     async function loadGlobalData() {
       setLoading(true);
       setError("");
+
+      void loadFeed();
 
       try {
         setEvents(
@@ -121,6 +186,21 @@ export default function GlobalPage() {
         eyebrow="External Intelligence"
         title="Global Intelligence"
         description="Global events, commodities, agriculture and currency signals that may affect your business."
+        actions={
+          <button
+            type="button"
+            onClick={refreshFeed}
+            disabled={refreshing}
+            className="inline-flex items-center gap-2 rounded-lg border border-hairline bg-panel px-3.5 py-2 text-sm font-medium text-dim transition hover:text-white disabled:opacity-60"
+          >
+            {refreshing ? (
+              <Loader2 size={15} className="animate-spin" />
+            ) : (
+              <RefreshCw size={15} />
+            )}
+            Refresh intelligence
+          </button>
+        }
       />
 
       {error && (
@@ -128,6 +208,90 @@ export default function GlobalPage() {
           {error}
         </div>
       )}
+
+      {/* Live Feed — World Watch */}
+      <section className="mb-8">
+        <Panel
+          label={
+            <span className="flex items-center gap-1.5">
+              <Radar size={12} /> World Watch
+            </span>
+          }
+          title="Live Feed"
+          tone={
+            (feedStatus?.high_events_24h ?? 0) > 0 ? "critical" : "live"
+          }
+          action={
+            <span className="num text-xs text-mute">
+              {feedStatus?.high_events_24h ?? 0} HIGH / 24h · updated{" "}
+              {timeAgo(feedStatus?.last_run_at)}
+            </span>
+          }
+        >
+          {feed.length === 0 ? (
+            <p className="rounded-lg bg-panel-raised p-4 text-sm text-dim">
+              No feed items yet. Hit “Refresh intelligence”, or the scheduled
+              collector will populate this shortly.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {feed.map((item) => (
+                <div
+                  key={`${item.source}-${item.id}`}
+                  className="rounded-lg border border-hairline bg-panel-raised/40 p-3"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-white">
+                        {item.title}
+                      </p>
+                      {item.summary && (
+                        <p className="mt-1 line-clamp-2 text-xs text-dim">
+                          {item.summary}
+                        </p>
+                      )}
+                      <p className="num mt-1 text-[0.7rem] text-mute">
+                        {item.source} · {item.event_type}
+                        {item.region ? ` · ${item.region}` : ""} ·{" "}
+                        {timeAgo(item.detected_at)}
+                      </p>
+                    </div>
+                    <SeverityBadge value={item.severity} />
+                  </div>
+
+                  {(item.sources.length > 0 || item.url) && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {(item.sources.length
+                        ? item.sources
+                        : [{ title: "source", url: item.url ?? undefined }]
+                      )
+                        .slice(0, 3)
+                        .map(
+                          (s, i) =>
+                            s.url && (
+                              <a
+                                key={i}
+                                href={s.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1 rounded-md bg-panel-raised px-2 py-0.5 text-[0.7rem] text-live hover:underline"
+                              >
+                                <ExternalLink size={10} />
+                                {(s.title ?? new URL(s.url).hostname).slice(
+                                  0,
+                                  32,
+                                )}
+                              </a>
+                            ),
+                        )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </Panel>
+      </section>
 
       {/* Events */}
       <section>

@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta
+
 from sqlalchemy.orm import Session
 
 from app.ai.agent_context import (
@@ -36,6 +38,20 @@ def risk_agent(
             GlobalEvent.detected_at.desc()
         )
         .first()
+    )
+
+    # Recent HIGH/CRITICAL events (last 48h) — a single "latest" event is
+    # too narrow now that World Watch keeps feeding new ones.
+    _cutoff = datetime.utcnow() - timedelta(hours=48)
+    recent_high_events = (
+        db.query(GlobalEvent)
+        .filter(
+            GlobalEvent.detected_at >= _cutoff,
+            GlobalEvent.severity.in_(("HIGH", "CRITICAL")),
+        )
+        .order_by(GlobalEvent.detected_at.desc())
+        .limit(20)
+        .all()
     )
 
     # -------------------------------------------------
@@ -251,6 +267,16 @@ def risk_agent(
 
                 "global_event_severity":
                     global_event_severity,
+
+                "recent_high_events": [
+                    {
+                        "title": ev.title,
+                        "type": ev.event_type,
+                        "severity": ev.severity,
+                        "source": ev.source,
+                    }
+                    for ev in recent_high_events
+                ],
 
                 "commodity_risks":
                     commodity_risks,

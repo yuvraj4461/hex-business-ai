@@ -196,7 +196,7 @@ export default function AgentsPage() {
         tone="live"
         eyebrow="Multi-Agent Intelligence"
         title="Agent Monitor"
-        description="Each agent is checked against the data it needs. The graph runs finance → sales → operations → risk."
+        description="Each agent is checked against the data it needs. The graph runs finance → sales → operations → world watch → risk."
         actions={
           <SeverityBadge
             value={data?.system_status}
