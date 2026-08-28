@@ -1,38 +1,13 @@
 import logging
-import os
 import json
 
-from dotenv import load_dotenv
-from google import genai
-from google.genai import types
-
+from app.ai.gemini import GEMINI_MODEL, get_client
 from app.ai.serialization import (
     make_json_safe,
 )
 
 
 logger = logging.getLogger(__name__)
-
-load_dotenv()
-
-GEMINI_API_KEY = os.getenv(
-    "GEMINI_API_KEY"
-)
-
-if not GEMINI_API_KEY:
-    raise RuntimeError(
-        "GEMINI_API_KEY is not configured."
-    )
-
-
-# Bound how long a request waits on Gemini so a slow or overloaded
-# model degrades to a non-AI answer instead of hanging the HTTP request.
-GEMINI_TIMEOUT_MS = int(os.getenv("GEMINI_TIMEOUT_MS", "25000"))
-
-client = genai.Client(
-    api_key=GEMINI_API_KEY,
-    http_options=types.HttpOptions(timeout=GEMINI_TIMEOUT_MS),
-)
 
 
 SYSTEM_PROMPT = """
@@ -83,8 +58,8 @@ the supplied HEX context.
 
     try:
 
-        response = client.models.generate_content(
-            model="gemini-3.6-flash",
+        response = get_client().models.generate_content(
+            model=GEMINI_MODEL,
             contents=prompt,
         )
 

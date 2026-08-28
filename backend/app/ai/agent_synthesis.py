@@ -1,32 +1,9 @@
 import logging
-import os
 
-from dotenv import load_dotenv
-from google import genai
-from google.genai import types
+from app.ai.gemini import GEMINI_MODEL, get_client
 
 
 logger = logging.getLogger(__name__)
-
-load_dotenv()
-
-# Bound how long the copilot will wait on Gemini. When the model is slow
-# or overloaded the request falls back to a deterministic summary rather
-# than hanging the HTTP request (and the frontend spinner) indefinitely.
-GEMINI_TIMEOUT_MS = int(os.getenv("GEMINI_TIMEOUT_MS", "25000"))
-
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-
-if not GEMINI_API_KEY:
-    raise RuntimeError(
-        "GEMINI_API_KEY is not configured."
-    )
-
-
-client = genai.Client(
-    api_key=GEMINI_API_KEY,
-    http_options=types.HttpOptions(timeout=GEMINI_TIMEOUT_MS),
-)
 
 
 SYSTEM_PROMPT = """
@@ -86,8 +63,8 @@ Create a single business answer that:
 """
 
     try:
-        response = client.models.generate_content(
-            model="gemini-3.6-flash",
+        response = get_client().models.generate_content(
+            model=GEMINI_MODEL,
             contents=prompt,
         )
     except Exception as exc:  # noqa: BLE001

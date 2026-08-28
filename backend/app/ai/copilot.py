@@ -1,22 +1,4 @@
-import os
-
-from dotenv import load_dotenv
-from google import genai
-
-
-load_dotenv()
-
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-
-if not GEMINI_API_KEY:
-    raise RuntimeError(
-        "GEMINI_API_KEY is not configured."
-    )
-
-
-client = genai.Client(
-    api_key=GEMINI_API_KEY
-)
+from app.ai.gemini import GEMINI_MODEL, get_client
 
 
 SYSTEM_PROMPT = """
@@ -60,10 +42,13 @@ Explain the evidence behind your answer.
 """
 
 
-    response = client.models.generate_content(
-        model="gemini-3.6-flash",
-        contents=prompt,
-    )
+    try:
+        response = get_client().models.generate_content(
+            model=GEMINI_MODEL,
+            contents=prompt,
+        )
+    except Exception:  # noqa: BLE001
+        return "HEX AI is temporarily unavailable."
 
     if not response.text:
         return "I could not generate a response."

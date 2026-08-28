@@ -1,23 +1,4 @@
-import os
-
-from dotenv import load_dotenv
-from google import genai
-
-
-load_dotenv()
-
-GEMINI_API_KEY = os.getenv(
-    "GEMINI_API_KEY"
-)
-
-if not GEMINI_API_KEY:
-    raise RuntimeError(
-        "GEMINI_API_KEY is not configured."
-    )
-
-client = genai.Client(
-    api_key=GEMINI_API_KEY
-)
+from app.ai.gemini import GEMINI_MODEL, get_client
 
 
 SYSTEM_PROMPT = """
@@ -61,16 +42,17 @@ VERIFIED SCENARIO DATA:
 Return a concise business recommendation.
 """
 
-    response = client.models.generate_content(
-        model="gemini-3.6-flash",
-        contents=prompt,
-    )
-
-    answer = (
-        response.text
-        if response.text
-        else "No recommendation generated."
-    )
+    try:
+        response = get_client().models.generate_content(
+            model=GEMINI_MODEL,
+            contents=prompt,
+        )
+        answer = response.text or "No recommendation generated."
+    except Exception:  # noqa: BLE001
+        answer = (
+            "HEX AI is temporarily unavailable; review the scenario "
+            "data and decide manually."
+        )
 
     return {
         "recommendation": answer,
