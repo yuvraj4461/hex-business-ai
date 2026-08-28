@@ -18,17 +18,17 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-# Google retires flash model aliases for new API keys fairly often. Set
-# GEMINI_MODEL to pin one; otherwise we try these in order and cache the
-# first that works.
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
+# Which flash models a given API key can see varies. Set GEMINI_MODEL to
+# pin one; otherwise we try these in order and cache the first that works.
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 GEMINI_TIMEOUT_MS = int(os.getenv("GEMINI_TIMEOUT_MS", "25000"))
 
 _MODEL_FALLBACKS = [
-    "gemini-3.6-flash",
     "gemini-2.5-flash",
-    "gemini-2.0-flash",
     "gemini-flash-latest",
+    "gemini-2.0-flash",
+    "gemini-2.5-flash-lite",
+    "gemini-2.5-pro",
 ]
 
 # Populated at runtime once a model call succeeds, so we stop probing.
