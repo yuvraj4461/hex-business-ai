@@ -35,17 +35,25 @@ def _search(query: str) -> dict | None:
     try:
         resp = requests.post(
             TAVILY_URL,
+            headers={"Authorization": f"Bearer {_api_key()}"},
             json={
-                "api_key": _api_key(),
                 "query": query,
                 "topic": "news",
                 "days": 7,
                 "max_results": 5,
-                "include_answer": True,
+                "search_depth": "basic",
+                "include_answer": "advanced",
             },
             timeout=30,
         )
-        resp.raise_for_status()
+        if resp.status_code >= 400:
+            logger.warning(
+                "Tavily %s for %r: %s",
+                resp.status_code,
+                query,
+                resp.text[:200],
+            )
+            return None
         return resp.json()
     except Exception as exc:  # noqa: BLE001
         logger.warning("Tavily search failed for %r: %s", query, exc)
@@ -70,6 +78,8 @@ def collect_web_search(db: Session) -> dict:
         return {"skipped": "TAVILY_API_KEY not set"}
 
     stored = 0
+    failed = 0
+    empty = 0
     seen_hashes = {
         h
         for (h,) in db.execute(
@@ -83,10 +93,12 @@ def collect_web_search(db: Session) -> dict:
     for spec in STANDING_QUERIES:
         result = _search(spec["query"])
         if not result:
+            failed += 1
             continue
 
         answer = (result.get("answer") or "").strip()
         if not answer:
+            empty += 1
             continue
 
         digest = hashlib.sha256(
@@ -131,4 +143,9 @@ def collect_web_search(db: Session) -> dict:
         stored += 1
 
     db.commit()
-    return {"queries": len(STANDING_QUERIES), "stored": stored}
+    return {
+        "queries": len(STANDING_QUERIES),
+        "stored": stored,
+        "failed": failed,
+        "empty_or_duplicate": empty + (len(STANDING_QUERIES) - stored - failed - empty),
+    }
