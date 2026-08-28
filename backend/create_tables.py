@@ -42,3 +42,18 @@ print()
 print(
     "Database tables created successfully!"
 )
+
+
+# Mark this fresh database as being at the latest Alembic revision, so
+# future `alembic upgrade head` runs only apply migrations added later.
+# (Existing databases are migrated with `alembic upgrade head` instead.)
+try:
+    from alembic import command
+    from alembic.config import Config
+
+    print()
+    print("Stamping Alembic revision -> head ...")
+    command.stamp(Config("alembic.ini"), "head")
+    print("Done.")
+except Exception as exc:  # noqa: BLE001
+    print(f"(Alembic stamp skipped: {exc})")

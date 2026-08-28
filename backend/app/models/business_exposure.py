@@ -38,6 +38,12 @@ class BusinessExposure(Base):
         index=True,
     )
 
+    shipment_id: Mapped[int | None] = mapped_column(
+        ForeignKey("shipments.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
     supplier_id: Mapped[int | None] = mapped_column(
         ForeignKey("suppliers.id"),
         nullable=True,

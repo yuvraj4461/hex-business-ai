@@ -24,7 +24,9 @@ def analyze_global_event_exposure(
 
     The BusinessExposure table is the authoritative
     production exposure source because the Scenario
-    engine already uses it.
+    engine already uses it. When there are no stored
+    rows yet, they are computed once from what is in
+    transit (see app.services.exposure_recompute).
     """
 
     exposures = (
@@ -41,6 +43,20 @@ def analyze_global_event_exposure(
         )
         .all()
     )
+
+    if not exposures:
+        from app.services.exposure_recompute import recompute_exposure
+
+        if recompute_exposure(db, organization_id, event):
+            exposures = (
+                db.query(BusinessExposure)
+                .filter(
+                    BusinessExposure.organization_id == organization_id,
+                    BusinessExposure.global_event_id == event.id,
+                )
+                .order_by(BusinessExposure.detected_at.desc())
+                .all()
+            )
 
     results = []
 

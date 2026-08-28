@@ -2,9 +2,10 @@ from sqlalchemy import ForeignKey, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database.connection import Base
+from app.models._mixins import SourceTrackedMixin
 
 
-class Product(Base):
+class Product(SourceTrackedMixin, Base):
     __tablename__ = "products"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)

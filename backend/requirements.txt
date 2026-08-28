@@ -25,3 +25,19 @@ requests
 
 python-multipart
 email-validator
+
+# Commodity workbook parsing (World Bank CMO data)
+pandas
+openpyxl
+
+# Schema migrations
+alembic
+
+# Background auto-sync of connections
+apscheduler
+
+# Data-source integration: encrypt connection credentials at rest
+cryptography
+
+# Date parsing for ingested spreadsheets / SQL rows
+python-dateutil

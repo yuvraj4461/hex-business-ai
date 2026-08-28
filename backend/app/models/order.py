@@ -4,9 +4,10 @@ from sqlalchemy import DateTime, ForeignKey, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database.connection import Base
+from app.models._mixins import SourceTrackedMixin
 
 
-class Order(Base):
+class Order(SourceTrackedMixin, Base):
     __tablename__ = "orders"
 
     id: Mapped[int] = mapped_column(

@@ -15,6 +15,10 @@ from app.services.global_exposure import (
     build_global_exposure_summary,
 )
 
+from app.services.exposure_recompute import (
+    recompute_exposure,
+)
+
 from app.services.risk_score import (
     calculate_business_risk_score,
 )
@@ -79,3 +83,23 @@ def get_global_exposure(
         **summary,
         "business_risk": risk,
     }
+
+
+@router.post("/{event_id}/recompute")
+def recompute_global_exposure(
+    event_id: int,
+    current_user: User = Depends(require_permission("run_analysis")),
+    db: Session = Depends(get_db),
+):
+    """Rebuild exposure rows for this event from current shipments."""
+
+    event = (
+        db.query(GlobalEvent).filter(GlobalEvent.id == event_id).first()
+    )
+    if not event:
+        raise HTTPException(status_code=404, detail="Global event not found.")
+
+    written = recompute_exposure(
+        db, current_user.organization_id, event
+    )
+    return {"event_id": event_id, "exposures_written": written}

@@ -83,6 +83,7 @@ def run_red_sea_analysis(
                 affected_route_id=(
                     route_id
                 ),
+                event=event,
             )
         )
 

@@ -1,8 +1,17 @@
+"""Legacy route-level exposure writer.
+
+Kept for backwards compatibility (test_red_sea.py). New code should use
+`app.services.exposure_recompute.recompute_exposure`, which is
+shipment-driven. This version now matches events geographically via
+`app.services.geo_exposure` instead of a hard-coded Red Sea rule.
+"""
+
 from sqlalchemy.orm import Session
 
 from app.models.business_exposure import BusinessExposure
 from app.models.global_event import GlobalEvent
 from app.models.supply_route import SupplyRoute
+from app.services import geo_exposure
 
 
 def analyze_event_exposure(
@@ -14,57 +23,33 @@ def analyze_event_exposure(
     routes = (
         db.query(SupplyRoute)
         .filter(
-            SupplyRoute.organization_id
-            == organization_id,
+            SupplyRoute.organization_id == organization_id,
             SupplyRoute.status == "ACTIVE",
         )
         .all()
     )
 
+    severity = (event.severity or "MEDIUM").upper()
+    chokepoint = geo_exposure.is_chokepoint(event)
+    delay = geo_exposure.disruption_delay_days(event, chokepoint)
+
     exposures = []
 
     for route in routes:
 
-        affected = False
-
-        if (
-            event.event_type
-            == "LOGISTICS"
-            and route.corridor
-            == "RED_SEA"
-        ):
-            affected = True
-
-        if (
-            event.event_type
-            == "GEOPOLITICAL"
-            and route.corridor
-            in {
-                "RED_SEA",
-                "CAPE_OF_GOOD_HOPE",
-            }
-        ):
-            affected = True
-
+        affected, reason = geo_exposure.event_affects(
+            event,
+            corridor=route.corridor,
+            origin_country=route.origin_country,
+            destination_country=route.destination_country,
+        )
         if not affected:
             continue
 
-        if route.corridor == "RED_SEA":
-            delay = 14
-            cost_impact = (
-                float(route.freight_cost)
-                * 0.25
-            )
-            severity = "HIGH"
-
-        else:
-            delay = 0
-            cost_impact = 0
-            severity = "LOW"
-
-        revenue_at_risk = (
-            cost_impact * 2
+        cost_impact = float(route.freight_cost) * (
+            0.25 if severity in ("HIGH", "CRITICAL") else 0.1
         )
+        revenue_at_risk = cost_impact * 2
 
         exposure = BusinessExposure(
             organization_id=organization_id,
@@ -76,13 +61,8 @@ def analyze_event_exposure(
             severity=severity,
             estimated_delay_days=delay,
             estimated_cost_impact=cost_impact,
-            estimated_revenue_at_risk=(
-                revenue_at_risk
-            ),
-            explanation=(
-                f"Route {route.route_name} "
-                f"is exposed to the event."
-            ),
+            estimated_revenue_at_risk=revenue_at_risk,
+            explanation=reason or f"Route {route.route_name} is exposed.",
         )
 
         db.add(exposure)

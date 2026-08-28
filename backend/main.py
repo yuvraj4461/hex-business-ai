@@ -1,7 +1,10 @@
 import os
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+from app.ingestion.scheduler import start_scheduler, stop_scheduler
 
 from app.api.auth import (
     router as auth_router,
@@ -47,9 +50,36 @@ from app.api.agents import (
     router as agents_router,
 )
 
+from app.api.connections import (
+    router as connections_router,
+    readiness_router,
+)
+
+from app.api.shipments import (
+    router as shipments_router,
+)
+
+from app.api.webhooks import (
+    router as webhooks_router,
+)
+
+from app.api.merge import (
+    router as merge_router,
+)
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    start_scheduler()
+    try:
+        yield
+    finally:
+        stop_scheduler()
+
+
 app = FastAPI(
     title="HEX Business AI",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 
@@ -130,6 +160,26 @@ app.include_router(
 
 app.include_router(
     agents_router
+)
+
+app.include_router(
+    connections_router
+)
+
+app.include_router(
+    readiness_router
+)
+
+app.include_router(
+    shipments_router
+)
+
+app.include_router(
+    webhooks_router
+)
+
+app.include_router(
+    merge_router
 )
 
 @app.get("/")

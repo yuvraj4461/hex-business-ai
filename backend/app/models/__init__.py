@@ -30,6 +30,13 @@ from app.models.agriculture_signal import (
 from app.models.demand_forecast import (
     DemandForecast,
 )
+from app.models.connection import Connection
+from app.models.raw_record import RawRecord
+from app.models.purchase_order import (
+    PurchaseOrder,
+    PurchaseOrderLine,
+)
+from app.models.shipment import Shipment
 
 __all__ = [
     "Organization",
@@ -58,4 +65,9 @@ __all__ = [
     "CommodityForecast",
     "AgricultureSignal",
     "DemandForecast",
+    "Connection",
+    "RawRecord",
+    "PurchaseOrder",
+    "PurchaseOrderLine",
+    "Shipment",
 ]

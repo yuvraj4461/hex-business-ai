@@ -1,10 +1,11 @@
-from sqlalchemy import ForeignKey, String
+from sqlalchemy import ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database.connection import Base
+from app.models._mixins import SourceTrackedMixin
 
 
-class Supplier(Base):
+class Supplier(SourceTrackedMixin, Base):
     __tablename__ = "suppliers"
 
     id: Mapped[int] = mapped_column(
@@ -37,5 +38,16 @@ class Supplier(Base):
         String(50),
         nullable=False,
         default="ACTIVE",
+    )
+
+    # Geography — needed to map a supplier onto a route/corridor and to
+    # score its exposure to a located global event.
+    country: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
+    city: Mapped[str | None] = mapped_column(String(120), nullable=True)
+
+    lead_time_days: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
     )
     

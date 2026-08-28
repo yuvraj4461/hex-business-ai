@@ -1,12 +1,15 @@
 from sqlalchemy.orm import Session
 
+from app.models.global_event import GlobalEvent
 from app.models.supply_route import SupplyRoute
+from app.services import geo_exposure
 
 
 def find_alternative_routes(
     db: Session,
     organization_id: int,
     affected_route_id: int,
+    event: GlobalEvent | None = None,
 ) -> list[dict]:
 
     affected_route = (
@@ -41,7 +44,18 @@ def find_alternative_routes(
 
     for route in alternatives:
 
-        if route.corridor == "RED_SEA":
+        # Skip alternatives that the disruption also hits. With an event we
+        # match on geography; without one we keep the legacy Red Sea guard.
+        if event is not None:
+            hit, _ = geo_exposure.event_affects(
+                event,
+                corridor=route.corridor,
+                origin_country=route.origin_country,
+                destination_country=route.destination_country,
+            )
+            if hit:
+                continue
+        elif route.corridor == "RED_SEA":
             continue
 
         cost_delta = (
