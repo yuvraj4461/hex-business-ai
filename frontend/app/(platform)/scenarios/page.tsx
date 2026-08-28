@@ -61,15 +61,17 @@ function ScenariosView() {
 
   const [data, setData] = useState<ScenarioData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [approving, setApproving] = useState(false);
-  const [approved, setApproved] = useState(false);
+  const [submitting, setSubmitting] = useState<"APPROVED" | "REJECTED" | null>(
+    null,
+  );
+  const [decision, setDecision] = useState<"APPROVED" | "REJECTED" | null>(null);
   const [error, setError] = useState("");
 
   const loadScenario = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
-      setApproved(false);
+      setDecision(null);
       const path = eventId
         ? `/scenarios/${encodeURIComponent(eventId)}`
         : "/demo/red-sea";
@@ -89,11 +91,11 @@ function ScenariosView() {
     loadScenario();
   }, [loadScenario]);
 
-  async function approveRecommendation() {
+  async function submitDecision(kind: "APPROVED" | "REJECTED") {
     if (!data?.ai_recommendation) return;
 
     try {
-      setApproving(true);
+      setSubmitting(kind);
       setError("");
 
       await apiRequest("/approvals", {
@@ -102,20 +104,23 @@ function ScenariosView() {
           recommendation: data.ai_recommendation,
           scenario: data.event?.title ?? "Scenario analysis",
           event_id: data.event?.id ?? null,
-          comment: "Approved from HEX scenario dashboard.",
+          decision: kind,
+          comment: `${
+            kind === "APPROVED" ? "Approved" : "Rejected"
+          } from HEX scenario dashboard.`,
         }),
       });
 
-      setApproved(true);
+      setDecision(kind);
     } catch (err) {
-      console.error("[HEX] Approval failed:", err);
+      console.error("[HEX] Decision failed:", err);
       setError(
         err instanceof Error
           ? err.message
-          : "Unable to approve recommendation.",
+          : "Unable to record the decision.",
       );
     } finally {
-      setApproving(false);
+      setSubmitting(null);
     }
   }
 
@@ -245,9 +250,21 @@ function ScenariosView() {
         />
         <StatTile
           label="Scenario Status"
-          value={approved ? "APPROVED" : hasExposure ? "AWAITING REVIEW" : "NO ACTION NEEDED"}
+          value={
+            decision
+              ? decision
+              : hasExposure
+                ? "AWAITING REVIEW"
+                : "NO ACTION NEEDED"
+          }
           icon={ShieldAlert}
-          tone={approved || !hasExposure ? "stable" : "elevated"}
+          tone={
+            decision === "REJECTED"
+              ? "critical"
+              : decision === "APPROVED" || !hasExposure
+                ? "stable"
+                : "elevated"
+          }
         />
       </div>
 
@@ -363,15 +380,15 @@ function ScenariosView() {
                 decisions require authorized human review.
               </p>
 
-              {!approved ? (
+              {decision === null ? (
                 <div className="flex gap-3">
                   <button
                     type="button"
-                    disabled={approving || !data.ai_recommendation}
-                    onClick={approveRecommendation}
+                    disabled={submitting !== null || !data.ai_recommendation}
+                    onClick={() => submitDecision("APPROVED")}
                     className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-bg transition hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {approving ? (
+                    {submitting === "APPROVED" ? (
                       <>
                         <Loader2 size={16} className="animate-spin" />
                         Approving…
@@ -386,16 +403,41 @@ function ScenariosView() {
 
                   <button
                     type="button"
-                    className="inline-flex items-center gap-2 rounded-lg border border-hairline px-4 py-2.5 text-sm font-semibold text-dim transition hover:text-white"
+                    disabled={submitting !== null || !data.ai_recommendation}
+                    onClick={() => submitDecision("REJECTED")}
+                    className="inline-flex items-center gap-2 rounded-lg border border-hairline px-4 py-2.5 text-sm font-semibold text-dim transition hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    <XCircle size={16} />
-                    Reject
+                    {submitting === "REJECTED" ? (
+                      <>
+                        <Loader2 size={16} className="animate-spin" />
+                        Rejecting…
+                      </>
+                    ) : (
+                      <>
+                        <XCircle size={16} />
+                        Reject
+                      </>
+                    )}
                   </button>
                 </div>
-              ) : (
+              ) : decision === "APPROVED" ? (
                 <div className="inline-flex items-center gap-2 rounded-lg bg-stable/15 px-4 py-2.5 text-sm font-semibold text-stable">
                   <CheckCircle2 size={16} />
                   Recommendation approved
+                </div>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <div className="inline-flex items-center gap-2 rounded-lg bg-critical/15 px-4 py-2.5 text-sm font-semibold text-critical">
+                    <XCircle size={16} />
+                    Recommendation rejected
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setDecision(null)}
+                    className="text-sm font-semibold text-dim underline transition hover:text-white"
+                  >
+                    Undo
+                  </button>
                 </div>
               )}
             </div>

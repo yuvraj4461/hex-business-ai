@@ -22,6 +22,7 @@ class ApprovalRequest(BaseModel):
     recommendation: str
     scenario: str
     event_id: int | None = None
+    decision: str = "APPROVED"
     comment: str | None = None
 
 
@@ -38,6 +39,12 @@ def create_approval(
     ),
     db: Session = Depends(get_db),
 ):
+    status = (
+        "REJECTED"
+        if str(request.decision).upper() == "REJECTED"
+        else "APPROVED"
+    )
+
     approval = {
         "id": len(_APPROVAL_STORE) + 1,
         "organization_id": (
@@ -50,7 +57,7 @@ def create_approval(
         "scenario": request.scenario,
         "event_id": request.event_id,
         "comment": request.comment,
-        "status": "APPROVED",
+        "status": status,
         "approved_at": (
             datetime.utcnow().isoformat()
         ),
@@ -61,7 +68,7 @@ def create_approval(
     )
 
     return {
-        "status": "APPROVED",
+        "status": status,
         "approval": approval,
     }
 

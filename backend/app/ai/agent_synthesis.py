@@ -1,6 +1,6 @@
 import logging
 
-from app.ai.gemini import GEMINI_MODEL, get_client
+from app.ai.gemini import generate_text
 
 
 logger = logging.getLogger(__name__)
@@ -63,10 +63,7 @@ Create a single business answer that:
 """
 
     try:
-        response = get_client().models.generate_content(
-            model=GEMINI_MODEL,
-            contents=prompt,
-        )
+        text = generate_text(prompt)
     except Exception as exc:  # noqa: BLE001
         # The LLM is a synthesis layer, not the source of truth: the
         # agent findings and recommendations are already computed. If
@@ -76,10 +73,10 @@ Create a single business answer that:
             question, findings, recommendations, reason=str(exc)
         )
 
-    if not response.text:
+    if not text:
         return _fallback_answer(question, findings, recommendations)
 
-    return response.text
+    return text
 
 
 def _fallback_answer(

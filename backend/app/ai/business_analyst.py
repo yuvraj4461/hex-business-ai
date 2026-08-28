@@ -1,7 +1,7 @@
 import logging
 import json
 
-from app.ai.gemini import GEMINI_MODEL, get_client
+from app.ai.gemini import generate_text
 from app.ai.serialization import (
     make_json_safe,
 )
@@ -58,13 +58,10 @@ the supplied HEX context.
 
     try:
 
-        response = get_client().models.generate_content(
-            model=GEMINI_MODEL,
-            contents=prompt,
-        )
+        text = generate_text(prompt)
 
-        if response.text:
-            return response.text
+        if text:
+            return text
 
         return (
             "HEX AI did not return a textual "

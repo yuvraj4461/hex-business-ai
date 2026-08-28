@@ -1,4 +1,4 @@
-from app.ai.gemini import GEMINI_MODEL, get_client
+from app.ai.gemini import generate_text
 
 
 SYSTEM_PROMPT = """
@@ -43,14 +43,8 @@ Explain the evidence behind your answer.
 
 
     try:
-        response = get_client().models.generate_content(
-            model=GEMINI_MODEL,
-            contents=prompt,
-        )
+        text = generate_text(prompt)
     except Exception:  # noqa: BLE001
         return "HEX AI is temporarily unavailable."
 
-    if not response.text:
-        return "I could not generate a response."
-
-    return response.text
+    return text or "I could not generate a response."

@@ -1,4 +1,4 @@
-from app.ai.gemini import GEMINI_MODEL, get_client
+from app.ai.gemini import generate_text
 
 
 SYSTEM_PROMPT = """
@@ -43,11 +43,7 @@ Return a concise business recommendation.
 """
 
     try:
-        response = get_client().models.generate_content(
-            model=GEMINI_MODEL,
-            contents=prompt,
-        )
-        answer = response.text or "No recommendation generated."
+        answer = generate_text(prompt) or "No recommendation generated."
     except Exception:  # noqa: BLE001
         answer = (
             "HEX AI is temporarily unavailable; review the scenario "

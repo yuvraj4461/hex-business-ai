@@ -18,10 +18,37 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-# gemini-2.5-flash is a real model with a usable free-tier quota. Override
-# with the GEMINI_MODEL env var for a newer / higher-tier model.
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+# Google retires flash model aliases for new API keys fairly often. Set
+# GEMINI_MODEL to pin one; otherwise we try these in order and cache the
+# first that works.
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
 GEMINI_TIMEOUT_MS = int(os.getenv("GEMINI_TIMEOUT_MS", "25000"))
+
+_MODEL_FALLBACKS = [
+    "gemini-3.6-flash",
+    "gemini-2.5-flash",
+    "gemini-2.0-flash",
+    "gemini-flash-latest",
+]
+
+# Populated at runtime once a model call succeeds, so we stop probing.
+_working_model: str | None = None
+
+
+def _candidate_models() -> list[str]:
+    ordered = [GEMINI_MODEL, *_MODEL_FALLBACKS]
+    seen: set[str] = set()
+    out: list[str] = []
+    for m in ordered:
+        if m and m not in seen:
+            seen.add(m)
+            out.append(m)
+    return out
+
+
+def _is_model_unavailable(exc: Exception) -> bool:
+    text = str(exc).lower()
+    return "404" in text or "not available" in text or "not found" in text
 
 
 def is_configured() -> bool:
@@ -40,10 +67,37 @@ def get_client() -> genai.Client:
 
 
 def generate_text(prompt: str, *, model: str | None = None) -> str:
-    """Return the model's text, or raise (caller handles the fallback)."""
+    """Return the model's text, or raise (caller handles the fallback).
 
-    response = get_client().models.generate_content(
-        model=model or GEMINI_MODEL,
-        contents=prompt,
-    )
-    return response.text or ""
+    If a model alias has been retired (404), fall through the fallback
+    list and remember the one that worked.
+    """
+
+    global _working_model
+
+    client = get_client()
+    if model:
+        candidates = [model]
+    else:
+        candidates = _candidate_models()
+        if _working_model and _working_model in candidates:
+            candidates.remove(_working_model)
+            candidates.insert(0, _working_model)
+
+    last_exc: Exception | None = None
+    for candidate in [c for c in candidates if c]:
+        try:
+            response = client.models.generate_content(
+                model=candidate,
+                contents=prompt,
+            )
+            if not model:
+                _working_model = candidate
+            return response.text or ""
+        except Exception as exc:  # noqa: BLE001
+            last_exc = exc
+            if not _is_model_unavailable(exc):
+                raise
+            logger.warning("Gemini model %s unavailable, trying next", candidate)
+
+    raise last_exc or RuntimeError("No Gemini model available")
