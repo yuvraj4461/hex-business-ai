@@ -1,8 +1,8 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, Suspense, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { ArrowRight, Loader2 } from "lucide-react";
 
@@ -28,8 +28,14 @@ const INDUSTRIES = [
   "Other",
 ];
 
-export default function SignupPage() {
+function safeNext(raw: string | null): string {
+  if (raw && raw.startsWith("/") && !raw.startsWith("//")) return raw;
+  return "/integrations";
+}
+
+function SignupView() {
   const router = useRouter();
+  const next = safeNext(useSearchParams().get("next"));
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -62,7 +68,7 @@ export default function SignupPage() {
       }
 
       setToken(data.access_token);
-      router.push("/integrations");
+      router.push(next);
     } catch (err) {
       console.error("Signup failed:", err);
       setError(err instanceof Error ? err.message : "Signup failed.");
@@ -201,5 +207,13 @@ export default function SignupPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-bg" />}>
+      <SignupView />
+    </Suspense>
   );
 }

@@ -1,13 +1,13 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { ArrowRight, Loader2 } from "lucide-react";
 
 import { apiRequest } from "@/lib/api";
-import { setToken } from "@/lib/auth";
+import { isAuthenticated, setToken } from "@/lib/auth";
 import { Wordmark } from "@/app/components/Logo";
 
 interface LoginResponse {
@@ -15,13 +15,26 @@ interface LoginResponse {
   token_type: string;
 }
 
-export default function LoginPage() {
+function safeNext(raw: string | null): string {
+  // only allow internal paths
+  if (raw && raw.startsWith("/") && !raw.startsWith("//")) return raw;
+  return "/dashboard";
+}
+
+function LoginView() {
   const router = useRouter();
+  const params = useSearchParams();
+  const next = safeNext(params.get("next"));
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Already signed in? Go straight to the intended page.
+  useEffect(() => {
+    if (isAuthenticated()) router.replace(next);
+  }, [router, next]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -36,13 +49,11 @@ export default function LoginPage() {
       });
 
       if (!data.access_token) {
-        throw new Error(
-          "Login succeeded but no access token was returned.",
-        );
+        throw new Error("Login succeeded but no access token was returned.");
       }
 
       setToken(data.access_token);
-      router.push("/dashboard");
+      router.push(next);
     } catch (err) {
       console.error("Login failed:", err);
       setError(err instanceof Error ? err.message : "Login failed.");
@@ -53,7 +64,6 @@ export default function LoginPage() {
 
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-bg p-6">
-      {/* ambient brand glow */}
       <div
         aria-hidden
         className="pointer-events-none absolute -top-40 left-1/2 h-[38rem] w-[38rem] -translate-x-1/2 rounded-full bg-accent/20 blur-[140px]"
@@ -64,9 +74,9 @@ export default function LoginPage() {
       />
 
       <div className="relative w-full max-w-md">
-        <div className="mb-8">
+        <Link href="/" className="mb-8 inline-block">
           <Wordmark size={30} />
-        </div>
+        </Link>
 
         <div className="elevated relative overflow-hidden rounded-xl border border-hairline bg-panel p-7 ring-1 ring-inset ring-white/[0.03]">
           <span
@@ -134,7 +144,7 @@ export default function LoginPage() {
           <p className="mt-5 text-sm text-dim">
             New to HEX?{" "}
             <Link
-              href="/signup"
+              href={`/signup${next !== "/dashboard" ? `?next=${encodeURIComponent(next)}` : ""}`}
               className="font-semibold text-accent hover:underline"
             >
               Create an account
@@ -143,5 +153,13 @@ export default function LoginPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-bg" />}>
+      <LoginView />
+    </Suspense>
   );
 }
