@@ -11,6 +11,13 @@ class CopilotRequest(BaseModel):
     )
 
 
+class CopilotSource(BaseModel):
+
+    title: str
+
+    url: str
+
+
 class CopilotResponse(BaseModel):
 
     question: str
@@ -18,3 +25,5 @@ class CopilotResponse(BaseModel):
     answer: str
 
     data: dict[str, Any]
+
+    sources: list[CopilotSource] = []

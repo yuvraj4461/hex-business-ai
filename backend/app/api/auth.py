@@ -63,6 +63,19 @@ def register(
     db.commit()
     db.refresh(user)
 
+    if request.seed_demo:
+        try:
+            from app.services.demo_seed import seed_organization
+
+            seed_organization(db, organization.id, request.industry)
+        except Exception:  # noqa: BLE001 — signup must not fail over seeding
+            db.rollback()
+            import logging
+
+            logging.getLogger(__name__).exception(
+                "demo seed failed for org %s", organization.id
+            )
+
     token = create_access_token(user.id)
 
     return {

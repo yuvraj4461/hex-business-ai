@@ -7,6 +7,7 @@ class RegisterRequest(BaseModel):
     password: str
     organization_name: str
     industry: str
+    seed_demo: bool = False
 
 
 class LoginRequest(BaseModel):

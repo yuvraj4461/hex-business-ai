@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app.agents.runner import run_business_agents
 from app.ai.agent_synthesis import synthesize_agent_findings
 from app.ai.context_builder import build_ai_context
+from app.ai.web_research import research as web_research, sources_from
 from app.database.connection import get_db
 
 from app.models.customer import Customer
@@ -503,7 +504,22 @@ def ask_copilot(
         db=db,
     )
 
-    findings = list(
+    # Ground the answer in outside facts before the agents interpret it.
+    web = web_research(request.question)
+    web_sources = sources_from(web)
+
+    findings = [
+        {
+            "source": "WEB_RESEARCH",
+            "data": {
+                "provider": web.get("provider"),
+                "results": web.get("results", []),
+                "wikipedia": web.get("wikipedia"),
+            },
+        }
+    ]
+
+    findings += list(
         agent_result.get(
             "findings",
             [],
@@ -568,6 +584,14 @@ def ask_copilot(
         )
     )
 
+    recommendations.append(
+        (
+            "Ground external facts (prices, events, tariffs, definitions) "
+            "in WEB_RESEARCH and cite the source URLs. Use the specialist "
+            "agent findings to explain what it means for this business."
+        )
+    )
+
     answer = synthesize_agent_findings(
         question=request.question,
         findings=findings,
@@ -583,4 +607,7 @@ def ask_copilot(
 
         "data":
             context,
+
+        "sources":
+            web_sources,
     }

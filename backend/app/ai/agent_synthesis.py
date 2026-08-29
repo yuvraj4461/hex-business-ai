@@ -7,28 +7,37 @@ logger = logging.getLogger(__name__)
 
 
 SYSTEM_PROMPT = """
-You are HEX, an enterprise business intelligence and
+You are HEX, an enterprise supply-chain risk and
 decision-support system.
 
-You receive findings from specialized business agents.
+You are given two kinds of evidence:
 
-Your job is to combine those findings into one accurate,
-clear executive-level answer.
+A. WEB_RESEARCH — live results from Google and Wikipedia. This is
+   your source for outside-world facts: prices, tariffs, events,
+   shipping conditions, definitions.
+B. Specialist agent findings — HEX's own agents (finance, sales,
+   operations, world-watch, risk) computed from THIS business's
+   verified internal data (VERIFIED_HEX_DATABASE, GLOBAL_CONTEXT).
+
+Your job: answer the user's question by grounding the external facts
+in WEB_RESEARCH, then using the specialist findings to explain what
+those facts mean for this specific business's finances, operations
+and risk exposure.
 
 Rules:
 
-1. Use only the supplied agent findings.
-2. Never invent numbers.
-3. Never invent events or causes.
-4. Clearly distinguish facts from interpretation.
-5. Mention which specialist findings support the conclusion.
-6. If agents disagree or data is insufficient, say so.
-7. Do not claim that an action has been executed.
-8. Recommendations must be presented as recommendations,
-   not completed actions.
-9. Keep the answer useful and concise.
-10. Do not expose internal implementation details unless
-    the user asks about them.
+1. For any external fact, cite the source: put the URL in
+   parentheses right after the claim.
+2. Never invent numbers, events, sources or URLs.
+3. Keep external facts (from WEB_RESEARCH) clearly separate from
+   HEX's internal data (from the agents).
+4. Treat VERIFIED_HEX_DATABASE as authoritative for this business's
+   revenue, expenses, profit, orders and exposure.
+5. If the web research is thin or the agents disagree, say so.
+6. Do not claim any action has been executed; recommendations are
+   recommendations.
+7. Be concise and executive-level. End with 2-4 concrete next steps
+   when the evidence supports them.
 """
 
 
@@ -108,17 +117,41 @@ def _fallback_answer(
     )
     lines = [
         "HEX could not reach its language model, so this is a direct "
-        "summary of the specialist agent output (no AI synthesis)."
-        + reason_line,
+        "summary of the research and specialist agent output (no AI "
+        "synthesis)." + reason_line,
         "",
         f"Question: {question}",
-        "",
-        "Findings",
     ]
+
+    # Web research, if any, first — it's the outside-world context.
+    web = next(
+        (
+            f.get("data", {})
+            for f in (findings or [])
+            if isinstance(f, dict) and f.get("source") == "WEB_RESEARCH"
+        ),
+        None,
+    )
+    if web:
+        wiki = web.get("wikipedia") or {}
+        if wiki.get("summary"):
+            lines += ["", f"Wikipedia — {wiki.get('title')}", wiki["summary"][:600]]
+        results = web.get("results") or []
+        if results:
+            lines += ["", "Web results"]
+            for r in results[:5]:
+                lines.append(
+                    f"- {r.get('title')}: {(r.get('snippet') or '')[:180]} "
+                    f"({r.get('url')})"
+                )
+
+    lines += ["", "Specialist findings"]
 
     for item in findings or []:
         if not isinstance(item, dict):
             lines.append(f"- {item}")
+            continue
+        if item.get("source") == "WEB_RESEARCH":
             continue
 
         label = (
