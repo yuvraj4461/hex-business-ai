@@ -10,50 +10,72 @@ import { apiRequest } from "@/lib/api";
 import { setToken } from "@/lib/auth";
 import { Wordmark } from "@/app/components/Logo";
 
-interface LoginResponse {
+interface TokenResponse {
   access_token: string;
   token_type: string;
 }
 
-export default function LoginPage() {
+const INDUSTRIES = [
+  "Food",
+  "Clothing",
+  "Hardware",
+  "Software",
+  "Manufacturing",
+  "Retail",
+  "Logistics",
+  "Pharma",
+  "Automotive",
+  "Other",
+];
+
+export default function SignupPage() {
   const router = useRouter();
 
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [company, setCompany] = useState("");
+  const [industry, setIndustry] = useState(INDUSTRIES[0]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-
     setLoading(true);
     setError("");
 
     try {
-      const data = await apiRequest<LoginResponse>("/auth/login", {
+      const data = await apiRequest<TokenResponse>("/auth/register", {
         method: "POST",
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({
+          name: name.trim(),
+          email: email.trim(),
+          password,
+          organization_name: company.trim(),
+          industry,
+          seed_demo: true,
+        }),
       });
 
       if (!data.access_token) {
-        throw new Error(
-          "Login succeeded but no access token was returned.",
-        );
+        throw new Error("Account created but no token was returned.");
       }
 
       setToken(data.access_token);
-      router.push("/dashboard");
+      router.push("/integrations");
     } catch (err) {
-      console.error("Login failed:", err);
-      setError(err instanceof Error ? err.message : "Login failed.");
+      console.error("Signup failed:", err);
+      setError(err instanceof Error ? err.message : "Signup failed.");
     } finally {
       setLoading(false);
     }
   }
 
+  const field =
+    "w-full rounded-lg border border-hairline bg-panel-raised px-3.5 py-2.5 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20";
+
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-bg p-6">
-      {/* ambient brand glow */}
       <div
         aria-hidden
         className="pointer-events-none absolute -top-40 left-1/2 h-[38rem] w-[38rem] -translate-x-1/2 rounded-full bg-accent/20 blur-[140px]"
@@ -64,9 +86,9 @@ export default function LoginPage() {
       />
 
       <div className="relative w-full max-w-md">
-        <div className="mb-8">
+        <Link href="/" className="mb-8 inline-block">
           <Wordmark size={30} />
-        </div>
+        </Link>
 
         <div className="elevated relative overflow-hidden rounded-xl border border-hairline bg-panel p-7 ring-1 ring-inset ring-white/[0.03]">
           <span
@@ -75,10 +97,11 @@ export default function LoginPage() {
           />
 
           <h1 className="text-xl font-semibold tracking-tight text-white">
-            Sign in
+            Create your workspace
           </h1>
           <p className="mt-1 text-sm text-dim">
-            Supply-chain risk intelligence and decision support.
+            Free, and pre-loaded with a sample business so you can explore right
+            away.
           </p>
 
           {error && (
@@ -89,14 +112,25 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">
             <div>
-              <label className="eyebrow mb-1.5 block">Email</label>
+              <label className="eyebrow mb-1.5 block">Full name</label>
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                placeholder="Jordan Rivera"
+                className={field}
+              />
+            </div>
+
+            <div>
+              <label className="eyebrow mb-1.5 block">Work email</label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                placeholder="you@example.com"
-                className="w-full rounded-lg border border-hairline bg-panel-raised px-3.5 py-2.5 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20"
+                placeholder="you@company.com"
+                className={field}
               />
             </div>
 
@@ -107,9 +141,36 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                placeholder="••••••••"
-                className="w-full rounded-lg border border-hairline bg-panel-raised px-3.5 py-2.5 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20"
+                minLength={8}
+                placeholder="At least 8 characters"
+                className={field}
               />
+            </div>
+
+            <div>
+              <label className="eyebrow mb-1.5 block">Company name</label>
+              <input
+                value={company}
+                onChange={(e) => setCompany(e.target.value)}
+                required
+                placeholder="Acme Industries"
+                className={field}
+              />
+            </div>
+
+            <div>
+              <label className="eyebrow mb-1.5 block">Industry</label>
+              <select
+                value={industry}
+                onChange={(e) => setIndustry(e.target.value)}
+                className={field}
+              >
+                {INDUSTRIES.map((i) => (
+                  <option key={i} value={i}>
+                    {i}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <button
@@ -120,11 +181,11 @@ export default function LoginPage() {
               {loading ? (
                 <>
                   <Loader2 size={16} className="animate-spin" />
-                  Signing in…
+                  Creating workspace…
                 </>
               ) : (
                 <>
-                  Sign in
+                  Create workspace
                   <ArrowRight size={16} />
                 </>
               )}
@@ -132,12 +193,9 @@ export default function LoginPage() {
           </form>
 
           <p className="mt-5 text-sm text-dim">
-            New to HEX?{" "}
-            <Link
-              href="/signup"
-              className="font-semibold text-accent hover:underline"
-            >
-              Create an account
+            Already have an account?{" "}
+            <Link href="/login" className="font-semibold text-accent hover:underline">
+              Sign in
             </Link>
           </p>
         </div>

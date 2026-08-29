@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from "react";
 
-import { Bot, Loader2, Send, Sparkles } from "lucide-react";
+import { Bot, ExternalLink, Loader2, Send, Sparkles } from "lucide-react";
 
 import { apiRequest } from "@/lib/api";
 
@@ -12,9 +12,12 @@ import Panel from "@/app/components/Panel";
 interface CopilotResponse {
   question: string;
   answer: string;
+  sources?: { title: string; url: string }[];
 }
 
 const CONTEXT = [
+  "Live web search (Google)",
+  "Wikipedia",
   "Business performance",
   "Historical analytics",
   "Global events",
@@ -139,6 +142,28 @@ export default function CopilotPage() {
                 {response.answer}
               </p>
             </div>
+
+            {response.sources && response.sources.length > 0 && (
+              <div className="mt-4">
+                <p className="eyebrow mb-2">Sources</p>
+                <div className="flex flex-wrap gap-2">
+                  {response.sources.map((s) => (
+                    <a
+                      key={s.url}
+                      href={s.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 rounded-md border border-hairline bg-panel-raised px-2.5 py-1 text-xs text-live transition hover:brightness-125"
+                    >
+                      <ExternalLink size={11} />
+                      {s.title.length > 48
+                        ? `${s.title.slice(0, 48)}…`
+                        : s.title}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
           </Panel>
         </div>
       )}

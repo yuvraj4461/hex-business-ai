@@ -96,6 +96,44 @@ h1 {
   box-shadow: var(--panel-shadow);
 }
 
+/* Marketing display type — big, tight, for the landing hero. */
+.display {
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.04;
+}
+
+/* ============================================================
+   Headline ticker — one seamless right-to-left scroll.
+   The track holds the item list twice; translating by -50%
+   lands exactly on the copy, so the loop is invisible.
+   ============================================================ */
+@keyframes hex-ticker {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.ticker-track {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  will-change: transform;
+  animation: hex-ticker 60s linear infinite;
+}
+
+.ticker-mask:hover .ticker-track {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ticker-track {
+    animation: none;
+  }
+}
+
 p {
   color: inherit;
 }

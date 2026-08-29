@@ -5,8 +5,14 @@ import { useEffect, useState } from "react";
 import {
   Bot,
   ChevronRight,
+  DollarSign,
   Loader2,
   Play,
+  Radar,
+  ShieldAlert,
+  ShoppingCart,
+  Truck,
+  type LucideIcon,
 } from "lucide-react";
 
 import { apiRequest } from "@/lib/api";
@@ -16,7 +22,15 @@ import PageHeader from "@/app/components/PageHeader";
 import Panel from "@/app/components/Panel";
 import SeverityBadge from "@/app/components/SeverityBadge";
 import { ErrorCard, LoadingCard } from "@/app/components/StateCard";
-import { toneForStatus, type Tone } from "@/app/components/tone";
+import { TONE_BADGE, toneForStatus, type Tone } from "@/app/components/tone";
+
+const AGENT_ICON: Record<string, LucideIcon> = {
+  finance: DollarSign,
+  sales: ShoppingCart,
+  operations: Truck,
+  watch: Radar,
+  risk: ShieldAlert,
+};
 
 interface AgentStatus {
   key: string;
@@ -225,8 +239,8 @@ export default function AgentsPage() {
         </p>
       </Panel>
 
-      {/* Agent cards */}
-      <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-2">
+      {/* Agent grid */}
+      <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {(data?.agents ?? []).map((agent) => {
           const tone: Tone =
             agent.status === "READY"
@@ -234,41 +248,64 @@ export default function AgentsPage() {
               : agent.status === "DEGRADED"
                 ? "elevated"
                 : "critical";
+          const Icon = AGENT_ICON[agent.key] ?? Bot;
+          const sources = Object.entries(agent.data_sources);
 
           return (
-            <Panel
+            <div
               key={agent.key}
-              tone={tone}
-              label={`Agent ${agent.position}`}
-              title={agent.name}
-              action={<SeverityBadge value={agent.status} tone={tone} />}
+              className="elevated group relative overflow-hidden rounded-xl border border-hairline bg-panel p-4 ring-1 ring-inset ring-white/[0.02] transition hover:-translate-y-0.5 hover:ring-accent/30"
+              title={agent.detail}
             >
-              <p className="text-sm text-dim">{agent.description}</p>
+              <span
+                aria-hidden
+                className={`absolute inset-x-0 top-0 h-0.5 ${
+                  tone === "critical"
+                    ? "bg-critical"
+                    : tone === "elevated"
+                      ? "bg-elevated"
+                      : "bg-stable"
+                }`}
+              />
 
-              <p className="mt-3 text-sm text-white">{agent.detail}</p>
+              <div className="flex items-start justify-between">
+                <span className="grid h-9 w-9 place-items-center rounded-lg bg-panel-raised text-dim group-hover:text-accent">
+                  <Icon size={17} />
+                </span>
+                <span className="num text-xs text-mute">
+                  0{agent.position}
+                </span>
+              </div>
 
-              <div className="mt-4 flex flex-wrap gap-2">
-                {Object.entries(agent.data_sources).map(([table, count]) => (
+              <p className="mt-3 font-semibold leading-tight text-white">
+                {agent.name}
+              </p>
+
+              <span
+                className={`mt-2 inline-block rounded-md px-2 py-0.5 text-[0.7rem] font-semibold ${TONE_BADGE[tone]}`}
+              >
+                {agent.status}
+              </span>
+
+              <div className="mt-3 flex items-center gap-1.5">
+                {sources.map(([table, count]) => (
                   <span
                     key={table}
-                    className="num rounded-md border border-hairline bg-panel-raised px-2 py-1 text-xs text-dim"
-                  >
-                    {table}:{" "}
-                    <span
-                      className={
-                        count === null
-                          ? "text-critical"
-                          : count === 0
-                            ? "text-elevated"
-                            : "text-stable"
-                      }
-                    >
-                      {count === null ? "n/a" : num(count)}
-                    </span>
-                  </span>
+                    title={`${table}: ${count === null ? "unavailable" : count}`}
+                    className={`h-1.5 w-1.5 rounded-full ${
+                      count === null
+                        ? "bg-critical"
+                        : count === 0
+                          ? "bg-elevated"
+                          : "bg-stable"
+                    }`}
+                  />
                 ))}
+                <span className="num ml-1 text-[0.65rem] text-mute">
+                  {sources.length} src
+                </span>
               </div>
-            </Panel>
+            </div>
           );
         })}
       </div>

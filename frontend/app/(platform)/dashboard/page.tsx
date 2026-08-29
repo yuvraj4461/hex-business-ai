@@ -19,6 +19,7 @@ import { inr, num } from "@/lib/format";
 
 import PageHeader from "@/app/components/PageHeader";
 import Panel from "@/app/components/Panel";
+import NewsTicker from "@/app/components/NewsTicker";
 import SeverityBadge from "@/app/components/SeverityBadge";
 import StatTile from "@/app/components/StatTile";
 import { ErrorCard, LoadingCard } from "@/app/components/StateCard";
@@ -158,10 +159,12 @@ export default function DashboardPage() {
       />
 
       {lastUpdated && (
-        <p className="num -mt-4 mb-6 text-xs text-mute">
+        <p className="num -mt-4 mb-4 text-xs text-mute">
           Synced {lastUpdated.toLocaleTimeString()} · auto every 30s
         </p>
       )}
+
+      <NewsTicker />
 
       {error && overview && (
         <div className="mb-6 rounded-lg border border-elevated/30 bg-elevated/5 p-3 text-sm text-elevated">

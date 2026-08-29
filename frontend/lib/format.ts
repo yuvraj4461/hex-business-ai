@@ -47,3 +47,14 @@ export function signedPercent(value: unknown, digits = 2): string {
   const n = toNumber(value);
   return `${n >= 0 ? "+" : ""}${n.toFixed(digits)}%`;
 }
+
+/** Compact relative time, e.g. "just now", "6m ago", "3h ago", "2d ago". */
+export function timeAgo(iso?: string | null): string {
+  if (!iso) return "never";
+  const secs = Math.round((Date.now() - new Date(iso).getTime()) / 1000);
+  if (!Number.isFinite(secs)) return "never";
+  if (secs < 60) return "just now";
+  if (secs < 3600) return `${Math.round(secs / 60)}m ago`;
+  if (secs < 86400) return `${Math.round(secs / 3600)}h ago`;
+  return `${Math.round(secs / 86400)}d ago`;
+}
