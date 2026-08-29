@@ -5,6 +5,7 @@ import {
   LayoutDashboard,
   Plug,
   Route,
+  ScrollText,
   ShieldAlert,
   Sparkles,
   Stamp,
@@ -100,6 +101,13 @@ export const NAV_ITEMS: NavItem[] = [
     icon: Stamp,
     description: "Record human decisions on HEX recommendations",
     group: "Decisions",
+  },
+  {
+    name: "Audit Log",
+    href: "/audit",
+    icon: ScrollText,
+    description: "Append-only record of every action in your org",
+    group: "Operations",
   },
 ];
 

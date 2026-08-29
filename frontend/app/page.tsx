@@ -3,14 +3,19 @@ import Link from "next/link";
 import {
   ArrowRight,
   Boxes,
+  DollarSign,
   Globe2,
-  LineChart,
   Radar,
   ShieldAlert,
+  ShoppingCart,
   Sparkles,
+  Truck,
 } from "lucide-react";
 
-import { Wordmark } from "@/app/components/Logo";
+import Card3D from "@/app/components/Card3D";
+import MarketingNav from "@/app/components/MarketingNav";
+import MarketingFooter from "@/app/components/MarketingFooter";
+import { SOLUTIONS } from "@/app/components/solutions";
 
 export const metadata = {
   title: "HEX — Supply-Chain Risk Intelligence",
@@ -37,17 +42,16 @@ const CAPABILITIES = [
 ];
 
 const AGENTS = [
-  ["Finance", "Establishes the money baseline"],
-  ["Sales", "Adds demand reality"],
-  ["Operations", "Reads supply against demand"],
-  ["World Watch", "Live disruption, tariff & price monitoring"],
-  ["Risk", "Weighs everything the others found"],
+  { icon: DollarSign, name: "Finance", desc: "Establishes the money baseline" },
+  { icon: ShoppingCart, name: "Sales", desc: "Adds demand reality" },
+  { icon: Truck, name: "Operations", desc: "Reads supply against demand" },
+  { icon: Radar, name: "World Watch", desc: "Live disruption, tariff & FX monitoring" },
+  { icon: ShieldAlert, name: "Risk", desc: "Weighs everything the others found" },
 ];
 
 export default function LandingPage() {
   return (
     <main className="relative min-h-screen overflow-hidden bg-bg">
-      {/* ambient brand glow */}
       <div
         aria-hidden
         className="pointer-events-none absolute -top-48 left-1/2 h-[42rem] w-[42rem] -translate-x-1/2 rounded-full bg-accent/20 blur-[150px]"
@@ -57,29 +61,11 @@ export default function LandingPage() {
         className="pointer-events-none absolute bottom-[-16rem] right-[-10rem] h-[30rem] w-[30rem] rounded-full bg-live/10 blur-[130px]"
       />
 
-      <div className="relative mx-auto max-w-6xl px-6">
-        {/* nav */}
-        <header className="flex items-center justify-between py-6">
-          <Wordmark size={28} subtitle={null} />
-          <nav className="flex items-center gap-3 text-sm">
-            <Link
-              href="/login"
-              className="rounded-lg px-3.5 py-2 font-medium text-dim transition hover:text-white"
-            >
-              Log in
-            </Link>
-            <Link
-              href="/signup"
-              className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3.5 py-2 font-semibold text-bg transition hover:bg-accent/90"
-            >
-              Get started
-              <ArrowRight size={15} />
-            </Link>
-          </nav>
-        </header>
+      <MarketingNav />
 
+      <div className="relative mx-auto max-w-6xl px-6">
         {/* hero */}
-        <section className="pt-16 pb-20 sm:pt-24">
+        <section className="pt-14 pb-20 sm:pt-20">
           <p className="eyebrow text-accent/90">Supply-Chain Risk Intelligence</p>
           <h1 className="display mt-4 max-w-3xl text-4xl text-white sm:text-6xl">
             Global disruption, translated into your next decision.
@@ -100,10 +86,10 @@ export default function LandingPage() {
               <ArrowRight size={16} />
             </Link>
             <Link
-              href="/login"
+              href="/enterprise"
               className="inline-flex items-center gap-2 rounded-lg border border-hairline bg-panel px-5 py-3 text-sm font-semibold text-dim transition hover:text-white"
             >
-              Log in
+              HEX for enterprise
             </Link>
           </div>
         </section>
@@ -124,23 +110,52 @@ export default function LandingPage() {
           ))}
         </section>
 
-        {/* agent pipeline */}
+        {/* agent pipeline — 3D cards */}
         <section className="pb-16">
           <p className="eyebrow">The agent graph</p>
           <h2 className="display mt-3 text-2xl text-white sm:text-3xl">
             Five specialists, one answer
           </h2>
-          <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-            {AGENTS.map(([name, desc], i) => (
-              <div
-                key={name}
-                className="rounded-xl border border-hairline bg-panel p-4"
-              >
+          <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            {AGENTS.map(({ icon: Icon, name, desc }, i) => (
+              <Card3D key={name} className="p-5">
                 <p className="num text-xs text-mute">0{i + 1}</p>
-                <p className="mt-1 font-semibold text-white">{name}</p>
+                <span className="mt-3 grid h-10 w-10 place-items-center rounded-lg bg-accent/10 text-accent">
+                  <Icon size={18} />
+                </span>
+                <p className="mt-3 font-semibold text-white">{name}</p>
                 <p className="mt-1 text-xs leading-5 text-dim">{desc}</p>
-              </div>
+              </Card3D>
             ))}
+          </div>
+        </section>
+
+        {/* solutions — 3D cards */}
+        <section className="pb-16">
+          <p className="eyebrow">Solutions</p>
+          <h2 className="display mt-3 text-2xl text-white sm:text-3xl">
+            Built for every seat at the table
+          </h2>
+          <div className="mt-7 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {SOLUTIONS.map((s) => {
+              const Icon = s.icon;
+              return (
+                <Card3D key={s.slug}>
+                  <span className="grid h-10 w-10 place-items-center rounded-lg bg-live/10 text-live">
+                    <Icon size={18} />
+                  </span>
+                  <h3 className="mt-3 font-semibold text-white">{s.role}</h3>
+                  <p className="mt-2 text-sm leading-6 text-dim">{s.tagline}</p>
+                  <Link
+                    href={`/solutions#${s.slug}`}
+                    className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-accent hover:underline"
+                  >
+                    Learn more
+                    <ArrowRight size={12} />
+                  </Link>
+                </Card3D>
+              );
+            })}
           </div>
         </section>
 
@@ -150,7 +165,7 @@ export default function LandingPage() {
             [
               [Globe2, "Live intelligence", "GDELT, web search, FX and commodity feeds — always on."],
               [Boxes, "Your systems", "Connect an ERP or accounting system, or upload CSV / Excel."],
-              [LineChart, "Your numbers", "Revenue, expenses, orders and exposure, kept in sync."],
+              [ShieldAlert, "Your exposure", "Revenue, cost and route risk, recomputed as the world changes."],
             ] as const
           ).map(([Icon, title, body]) => (
             <div
@@ -165,7 +180,7 @@ export default function LandingPage() {
         </section>
 
         {/* closing CTA */}
-        <section className="mb-24 rounded-2xl border border-hairline bg-panel p-10 text-center">
+        <section className="mb-20 rounded-2xl border border-hairline bg-panel p-10 text-center">
           <h2 className="display text-2xl text-white sm:text-3xl">
             See your supply chain the way HEX does.
           </h2>
@@ -181,11 +196,9 @@ export default function LandingPage() {
             <ArrowRight size={16} />
           </Link>
         </section>
-
-        <footer className="border-t border-hairline py-8 text-xs text-mute">
-          HEX — supply-chain risk intelligence. Not affiliated with hex.tech.
-        </footer>
       </div>
+
+      <MarketingFooter />
     </main>
   );
 }
