@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 
 import { ArrowRight, ChevronDown } from "lucide-react";
 
+import { isAuthenticated } from "@/lib/auth";
 import { Wordmark } from "@/app/components/Logo";
 import { NAV_ITEMS } from "@/app/components/nav";
 import { SOLUTIONS } from "@/app/components/solutions";
@@ -17,6 +18,12 @@ const PLATFORM_LINKS = NAV_ITEMS.filter((i) =>
 
 export default function MarketingNav() {
   const [open, setOpen] = useState<"platform" | "solutions" | null>(null);
+  const [authed, setAuthed] = useState(false);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- client-only auth read
+    setAuthed(isAuthenticated());
+  }, []);
 
   return (
     <header
@@ -62,19 +69,31 @@ export default function MarketingNav() {
         </nav>
 
         <div className="flex items-center gap-2 text-sm">
-          <Link
-            href="/login"
-            className="rounded-lg px-3.5 py-2 font-medium text-dim transition hover:text-white"
-          >
-            Log in
-          </Link>
-          <Link
-            href="/signup"
-            className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3.5 py-2 font-semibold text-bg transition hover:bg-accent/90"
-          >
-            Get started
-            <ArrowRight size={15} />
-          </Link>
+          {authed ? (
+            <Link
+              href="/dashboard"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3.5 py-2 font-semibold text-bg transition hover:bg-accent/90"
+            >
+              Open HEX
+              <ArrowRight size={15} />
+            </Link>
+          ) : (
+            <>
+              <Link
+                href="/login"
+                className="rounded-lg px-3.5 py-2 font-medium text-dim transition hover:text-white"
+              >
+                Log in
+              </Link>
+              <Link
+                href="/signup"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3.5 py-2 font-semibold text-bg transition hover:bg-accent/90"
+              >
+                Get started
+                <ArrowRight size={15} />
+              </Link>
+            </>
+          )}
         </div>
       </div>
 
