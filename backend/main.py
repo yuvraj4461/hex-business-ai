@@ -76,6 +76,10 @@ from app.api.scenarios import (
     router as scenarios_router,
 )
 
+from app.api.audit import (
+    router as audit_router,
+)
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     bootstrap_on_startup()
@@ -199,6 +203,10 @@ app.include_router(
 
 app.include_router(
     scenarios_router
+)
+
+app.include_router(
+    audit_router
 )
 
 @app.get("/")
