@@ -3,9 +3,12 @@ import Link from "next/link";
 import { ArrowRight, Check } from "lucide-react";
 
 import Card3D from "@/app/components/Card3D";
+import CardArt, { type ArtKind } from "@/app/components/CardArt";
 import MarketingNav from "@/app/components/MarketingNav";
 import MarketingFooter from "@/app/components/MarketingFooter";
 import { SOLUTIONS } from "@/app/components/solutions";
+
+const ART: ArtKind[] = ["flow", "sparkline", "route", "radar", "donut"];
 
 export const metadata = {
   title: "HEX Solutions — by team",
@@ -38,13 +41,18 @@ export default function SolutionsPage() {
 
         {/* quick grid */}
         <section className="grid gap-4 pb-16 md:grid-cols-2 lg:grid-cols-3">
-          {SOLUTIONS.map((s) => {
+          {SOLUTIONS.map((s, i) => {
             const Icon = s.icon;
             return (
               <Card3D key={s.slug}>
-                <span className="grid h-10 w-10 place-items-center rounded-lg bg-accent/10 text-accent">
-                  <Icon size={18} />
-                </span>
+                <div className="flex items-center justify-between">
+                  <span className="grid h-10 w-10 place-items-center rounded-lg bg-accent/10 text-accent">
+                    <Icon size={18} />
+                  </span>
+                  <span className="w-20 text-accent/70">
+                    <CardArt kind={ART[i % ART.length]} />
+                  </span>
+                </div>
                 <h3 className="mt-3 font-semibold text-white">{s.role}</h3>
                 <p className="mt-2 text-sm leading-6 text-dim">{s.tagline}</p>
                 <a

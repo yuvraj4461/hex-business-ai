@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 
 import Card3D from "@/app/components/Card3D";
+import CardArt, { type ArtKind } from "@/app/components/CardArt";
 import MarketingNav from "@/app/components/MarketingNav";
 import MarketingFooter from "@/app/components/MarketingFooter";
 
@@ -22,34 +23,45 @@ export const metadata = {
     "Role-based access, encrypted credentials, full audit logging, tenant isolation and human-in-the-loop approvals.",
 };
 
-const PILLARS = [
+const PILLARS: {
+  icon: typeof Users;
+  art: ArtKind;
+  title: string;
+  body: string;
+}[] = [
   {
     icon: Users,
+    art: "users",
     title: "Role-based access control",
     body: "Six built-in roles — Super Admin, Data Admin, Analyst, Business User, Decision Maker, External Partner — each mapped to granular permissions (manage data, run analysis, approve recommendations, view audit logs).",
   },
   {
     icon: KeyRound,
+    art: "lock",
     title: "Encrypted credentials at rest",
     body: "Connection secrets (database passwords, API tokens) are stored only as Fernet ciphertext — never in plaintext columns, never written to logs. Bring your own key via HEX_SECRET_KEY.",
   },
   {
     icon: FileClock,
+    art: "ledger",
     title: "Full audit trail",
     body: "Every data mutation, sync and intelligence refresh writes an audit record: who, what action, which entity, and when. Queryable by users with the view_audit_logs permission.",
   },
   {
     icon: Network,
+    art: "flow",
     title: "Tenant isolation",
     body: "Every record is scoped to an organization. Users only ever see and act on their own organization's suppliers, routes, finances and events.",
   },
   {
     icon: UserCheck,
+    art: "shield",
     title: "Human-in-the-loop",
     body: "HEX provides decision support, not autonomy. High-impact operational decisions require an authorized human to approve or reject — and that decision is recorded.",
   },
   {
     icon: Lock,
+    art: "donut",
     title: "Your infrastructure",
     body: "Deploy the API as a container or native service, backed by your own Postgres. Front end and back end are separable; nothing is locked to a vendor.",
   },
@@ -57,10 +69,14 @@ const PILLARS = [
 
 export default function EnterprisePage() {
   return (
-    <main className="relative min-h-screen overflow-hidden bg-bg">
+    <main className="surface-deep relative min-h-screen overflow-hidden">
       <div
         aria-hidden
-        className="pointer-events-none absolute -top-48 right-0 h-[40rem] w-[40rem] rounded-full bg-accent/15 blur-[150px]"
+        className="grid-overlay pointer-events-none absolute inset-0 h-[70vh]"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -top-48 right-0 h-[40rem] w-[40rem] rounded-full bg-accent/10 blur-[150px]"
       />
 
       <MarketingNav />
@@ -117,11 +133,16 @@ export default function EnterprisePage() {
             Every layer accounts for who did what
           </h2>
           <div className="mt-7 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {PILLARS.map(({ icon: Icon, title, body }) => (
+            {PILLARS.map(({ icon: Icon, art, title, body }) => (
               <Card3D key={title}>
-                <span className="grid h-10 w-10 place-items-center rounded-lg bg-accent/10 text-accent">
-                  <Icon size={18} />
-                </span>
+                <div className="flex items-center justify-between">
+                  <span className="grid h-10 w-10 place-items-center rounded-lg bg-accent/10 text-accent">
+                    <Icon size={18} />
+                  </span>
+                  <span className="w-20 text-accent/70">
+                    <CardArt kind={art} />
+                  </span>
+                </div>
                 <h3 className="mt-3 font-semibold text-white">{title}</h3>
                 <p className="mt-2 text-sm leading-6 text-dim">{body}</p>
               </Card3D>

@@ -103,6 +103,22 @@ h1 {
   line-height: 1.04;
 }
 
+/* Deep near-black surface — a signature background for pages like
+   /enterprise that should feel visibly distinct from the app chrome. */
+.surface-deep {
+  background-color: #05070e;
+}
+
+/* Faint blueprint grid overlay. Put on a full-bleed absolute layer. */
+.grid-overlay {
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--hairline) 55%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--hairline) 55%, transparent) 1px, transparent 1px);
+  background-size: 46px 46px;
+  -webkit-mask-image: radial-gradient(circle at 50% 0%, #000 0%, transparent 75%);
+  mask-image: radial-gradient(circle at 50% 0%, #000 0%, transparent 75%);
+}
+
 /* ============================================================
    Headline ticker — one seamless right-to-left scroll.
    The track holds the item list twice; translating by -50%

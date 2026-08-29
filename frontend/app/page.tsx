@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 
 import Card3D from "@/app/components/Card3D";
+import CardArt, { type ArtKind } from "@/app/components/CardArt";
 import MarketingNav from "@/app/components/MarketingNav";
 import MarketingFooter from "@/app/components/MarketingFooter";
 import { SOLUTIONS } from "@/app/components/solutions";
@@ -41,13 +42,20 @@ const CAPABILITIES = [
   },
 ];
 
-const AGENTS = [
-  { icon: DollarSign, name: "Finance", desc: "Establishes the money baseline" },
-  { icon: ShoppingCart, name: "Sales", desc: "Adds demand reality" },
-  { icon: Truck, name: "Operations", desc: "Reads supply against demand" },
-  { icon: Radar, name: "World Watch", desc: "Live disruption, tariff & FX monitoring" },
-  { icon: ShieldAlert, name: "Risk", desc: "Weighs everything the others found" },
+const AGENTS: {
+  icon: typeof DollarSign;
+  art: ArtKind;
+  name: string;
+  desc: string;
+}[] = [
+  { icon: DollarSign, art: "sparkline", name: "Finance", desc: "Establishes the money baseline" },
+  { icon: ShoppingCart, art: "bars", name: "Sales", desc: "Adds demand reality" },
+  { icon: Truck, art: "route", name: "Operations", desc: "Reads supply against demand" },
+  { icon: Radar, art: "radar", name: "World Watch", desc: "Live disruption, tariff & FX monitoring" },
+  { icon: ShieldAlert, art: "shield", name: "Risk", desc: "Weighs everything the others found" },
 ];
+
+const SOLUTION_ART: ArtKind[] = ["flow", "sparkline", "route", "radar", "donut"];
 
 export default function LandingPage() {
   return (
@@ -117,13 +125,18 @@ export default function LandingPage() {
             Five specialists, one answer
           </h2>
           <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-            {AGENTS.map(({ icon: Icon, name, desc }, i) => (
+            {AGENTS.map(({ icon: Icon, art, name, desc }, i) => (
               <Card3D key={name} className="p-5">
-                <p className="num text-xs text-mute">0{i + 1}</p>
-                <span className="mt-3 grid h-10 w-10 place-items-center rounded-lg bg-accent/10 text-accent">
-                  <Icon size={18} />
+                <div className="flex items-start justify-between">
+                  <span className="grid h-10 w-10 place-items-center rounded-lg bg-accent/10 text-accent">
+                    <Icon size={18} />
+                  </span>
+                  <p className="num text-xs text-mute">0{i + 1}</p>
+                </div>
+                <span className="mt-3 block text-accent/70">
+                  <CardArt kind={art} />
                 </span>
-                <p className="mt-3 font-semibold text-white">{name}</p>
+                <p className="mt-2 font-semibold text-white">{name}</p>
                 <p className="mt-1 text-xs leading-5 text-dim">{desc}</p>
               </Card3D>
             ))}
@@ -137,13 +150,18 @@ export default function LandingPage() {
             Built for every seat at the table
           </h2>
           <div className="mt-7 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {SOLUTIONS.map((s) => {
+            {SOLUTIONS.map((s, i) => {
               const Icon = s.icon;
               return (
                 <Card3D key={s.slug}>
-                  <span className="grid h-10 w-10 place-items-center rounded-lg bg-live/10 text-live">
-                    <Icon size={18} />
-                  </span>
+                  <div className="flex items-center justify-between">
+                    <span className="grid h-10 w-10 place-items-center rounded-lg bg-live/10 text-live">
+                      <Icon size={18} />
+                    </span>
+                    <span className="w-20 text-live/70">
+                      <CardArt kind={SOLUTION_ART[i % SOLUTION_ART.length]} />
+                    </span>
+                  </div>
                   <h3 className="mt-3 font-semibold text-white">{s.role}</h3>
                   <p className="mt-2 text-sm leading-6 text-dim">{s.tagline}</p>
                   <Link
