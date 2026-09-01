@@ -330,14 +330,23 @@ function ScenariosView() {
               tone="live"
               label="HEX Route Engine"
               title="Alternatives"
-              action={<RouteIcon size={18} className="text-dim" />}
+              action={
+                <span className="flex items-center gap-2 text-dim">
+                  {routeOptions.length > 0 && (
+                    <span className="num text-xs text-mute">
+                      {routeOptions.length}
+                    </span>
+                  )}
+                  <RouteIcon size={18} />
+                </span>
+              }
             >
               {routeOptions.length === 0 ? (
                 <p className="rounded-lg bg-panel-raised p-4 text-sm text-dim">
                   No alternative route data was returned by the backend.
                 </p>
               ) : (
-                <div className="space-y-2.5">
+                <div className="max-h-[24rem] space-y-2.5 overflow-y-auto pr-1">
                   {routeOptions.map((route, index) => (
                     <div
                       key={route.route_id ?? index}
@@ -388,7 +397,7 @@ function ScenariosView() {
           title="HEX Recommendation"
           action={<Sparkles size={18} className="text-live" />}
         >
-          <div className="rounded-lg bg-panel-raised p-4">
+          <div className="max-h-[26rem] overflow-y-auto rounded-lg bg-panel-raised p-4">
             <p className="whitespace-pre-wrap text-sm leading-6 text-dim">
               {data.ai_recommendation ??
                 "HEX has not generated a recommendation yet."}
