@@ -37,6 +37,7 @@ from app.models.purchase_order import (
     PurchaseOrderLine,
 )
 from app.models.shipment import Shipment
+from app.models.data_thread import DataThread, DataThreadMessage
 
 __all__ = [
     "Organization",
@@ -70,4 +71,6 @@ __all__ = [
     "PurchaseOrder",
     "PurchaseOrderLine",
     "Shipment",
+    "DataThread",
+    "DataThreadMessage",
 ]

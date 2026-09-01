@@ -3,6 +3,7 @@ import {
   Bot,
   Globe,
   LayoutDashboard,
+  MessagesSquare,
   Plug,
   Route,
   ScrollText,
@@ -58,6 +59,13 @@ export const NAV_ITEMS: NavItem[] = [
     href: "/analytics",
     icon: BarChart3,
     description: "Revenue, cost and performance trends for your business",
+    group: "Intelligence",
+  },
+  {
+    name: "Ask Your Data",
+    href: "/ask",
+    icon: MessagesSquare,
+    description: "Ask your business data in plain language — answers with charts",
     group: "Intelligence",
   },
   {
