@@ -20,10 +20,11 @@ import { inr, num } from "@/lib/format";
 
 import PageHeader from "@/app/components/PageHeader";
 import Panel from "@/app/components/Panel";
+import IntelCard from "@/app/components/IntelCard";
 import SeverityBadge from "@/app/components/SeverityBadge";
 import StatTile from "@/app/components/StatTile";
 import { EmptyCard, LoadingCard } from "@/app/components/StateCard";
-import { toneForStatus } from "@/app/components/tone";
+import { TONE_RAIL, toneForStatus } from "@/app/components/tone";
 
 interface Event {
   id: number;
@@ -94,7 +95,7 @@ export default function RiskPage() {
         setLoading(true);
         setError("");
         setEvents(
-          await apiRequest<Event[]>("/global-events/?limit=10"),
+          await apiRequest<Event[]>("/global-events/?limit=40"),
         );
       } catch (err) {
         console.error("Failed to load global events:", err);
@@ -185,61 +186,83 @@ export default function RiskPage() {
       )}
 
       <section>
-        <h2 className="eyebrow mb-1">Global Events</h2>
-        <p className="mb-4 text-sm text-dim">
-          Select an event to analyze its impact on your business.
-        </p>
-
         {events.length === 0 ? (
-          <EmptyCard message="No global events available." />
+          <>
+            <h2 className="eyebrow mb-1">Global Events</h2>
+            <EmptyCard message="No global events available." />
+          </>
         ) : (
-          <div className="grid gap-4 lg:grid-cols-2">
-            {events.map((event) => {
-              const isLoading = loadingExposureId === event.id;
-              const isSelected = selectedEvent?.event?.id === event.id;
+          <IntelCard
+            label="Signals"
+            title="Global Events"
+            tone={
+              events.some((e) => /crit|high/i.test(e.severity))
+                ? "critical"
+                : "live"
+            }
+            maxHeight="62vh"
+            action={
+              <span className="num text-xs text-mute">
+                {events.length} tracked
+              </span>
+            }
+          >
+            <p className="mb-4 text-sm text-dim">
+              Select an event to analyze its impact on your business.
+            </p>
+            <div className="grid gap-3 lg:grid-cols-2">
+              {events.map((event) => {
+                const isLoading = loadingExposureId === event.id;
+                const isSelected = selectedEvent?.event?.id === event.id;
 
-              return (
-                <Panel
-                  key={event.id}
-                  tone={toneForStatus(event.severity)}
-                  className={
-                    isSelected ? "ring-1 ring-critical/40" : undefined
-                  }
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                      <p className="font-semibold text-white">
-                        {event.title}
-                      </p>
-                      <p className="num mt-1 text-xs text-mute">
-                        {event.event_type}
-                        {event.region ? ` · ${event.region}` : ""}
-                      </p>
-                    </div>
-                    <SeverityBadge value={event.severity} />
-                  </div>
-
-                  <button
-                    type="button"
-                    disabled={isLoading}
-                    onClick={() => handleEventClick(event.id)}
-                    className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-bg transition hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-60"
+                return (
+                  <div
+                    key={event.id}
+                    className={`relative overflow-hidden rounded-lg border bg-panel-raised/40 p-3 ${
+                      isSelected
+                        ? "border-critical/40 ring-1 ring-critical/30"
+                        : "border-hairline"
+                    }`}
                   >
-                    {isLoading ? (
-                      <>
-                        <Loader2 size={15} className="animate-spin" />
-                        Analyzing exposure…
-                      </>
-                    ) : isSelected ? (
-                      "Exposure loaded"
-                    ) : (
-                      "Analyze business impact"
-                    )}
-                  </button>
-                </Panel>
-              );
-            })}
-          </div>
+                    <span
+                      aria-hidden
+                      className={`absolute inset-y-0 left-0 w-[3px] ${TONE_RAIL[toneForStatus(event.severity)]}`}
+                    />
+                    <div className="flex items-start justify-between gap-3 pl-2">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-white">
+                          {event.title}
+                        </p>
+                        <p className="num mt-1 text-[0.7rem] text-mute">
+                          {event.event_type}
+                          {event.region ? ` · ${event.region}` : ""}
+                        </p>
+                      </div>
+                      <SeverityBadge value={event.severity} />
+                    </div>
+
+                    <button
+                      type="button"
+                      disabled={isLoading}
+                      onClick={() => handleEventClick(event.id)}
+                      className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-bg transition hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {isLoading ? (
+                        <>
+                          <Loader2 size={15} className="animate-spin" />
+                          Analyzing…
+                        </>
+                      ) : isSelected ? (
+                        "Exposure loaded"
+                      ) : (
+                        "Analyze business impact"
+                      )}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </IntelCard>
         )}
       </section>
 
