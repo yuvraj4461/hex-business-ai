@@ -77,12 +77,12 @@ export default function AuditPage() {
         <EmptyCard message="No audit records yet." />
       ) : (
         <Panel label="Recent activity" title={`${rows.length} events`}>
-          <div className="overflow-x-auto">
+          <div className="max-h-[65vh] overflow-auto">
             <table className="w-full text-left text-sm">
-              <thead>
+              <thead className="sticky top-0 z-10 bg-panel">
                 <tr className="border-b border-hairline">
                   {["When", "Actor", "Action", "Entity", "Detail"].map((h) => (
-                    <th key={h} className="eyebrow px-3 py-2.5 font-semibold">
+                    <th key={h} className="eyebrow bg-panel px-3 py-2.5 font-semibold">
                       {h}
                     </th>
                   ))}
