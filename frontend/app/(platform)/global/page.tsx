@@ -18,9 +18,10 @@ import { num, signedPercent, timeAgo } from "@/lib/format";
 
 import PageHeader from "@/app/components/PageHeader";
 import Panel from "@/app/components/Panel";
+import IntelCard from "@/app/components/IntelCard";
 import SeverityBadge from "@/app/components/SeverityBadge";
 import { EmptyCard, LoadingCard } from "@/app/components/StateCard";
-import { toneForStatus } from "@/app/components/tone";
+import { TONE_RAIL, toneForStatus } from "@/app/components/tone";
 import IncidentTrend, {
   type TrendDay,
 } from "@/app/components/charts/IncidentTrend";
@@ -106,7 +107,7 @@ export default function GlobalPage() {
   async function loadFeed() {
     try {
       const [items, status] = await Promise.all([
-        apiRequest<FeedItem[]>("/intelligence/feed?limit=20"),
+        apiRequest<FeedItem[]>("/intelligence/feed?limit=40"),
         apiRequest<FeedStatus>("/intelligence/status"),
       ]);
       setFeed(items);
@@ -145,7 +146,7 @@ export default function GlobalPage() {
 
       try {
         setEvents(
-          await apiRequest<GlobalEvent[]>("/global-events/?limit=10"),
+          await apiRequest<GlobalEvent[]>("/global-events/?limit=40"),
         );
       } catch (err) {
         setError(
@@ -192,7 +193,7 @@ export default function GlobalPage() {
   }
 
   const commodities = Object.entries(market?.commodities ?? {});
-  const risks = (agriculture?.risks ?? []).slice(0, 6);
+  const risks = (agriculture?.risks ?? []).slice(0, 30);
 
   const topCategory = trend?.by_type?.[0];
   const typeBreakdown = (trend?.by_type ?? []).slice(0, 6).map((t) => ({
@@ -280,22 +281,24 @@ export default function GlobalPage() {
         </Panel>
       </section>
 
-      {/* Live Feed — World Watch */}
-      <section className="mb-8">
-        <Panel
+      {/* Intelligence grid — bounded cards, each scrolls inside itself,
+          several sit side by side so the whole picture fits one screen */}
+      <section className="mb-6 grid items-start gap-6 xl:grid-cols-2">
+        {/* Live Feed — World Watch */}
+        <IntelCard
           label={
             <span className="flex items-center gap-1.5">
               <Radar size={12} /> World Watch
             </span>
           }
           title="Live Feed"
-          tone={
-            (feedStatus?.high_events_24h ?? 0) > 0 ? "critical" : "live"
-          }
+          tone={(feedStatus?.high_events_24h ?? 0) > 0 ? "critical" : "live"}
+          maxHeight="72vh"
           action={
-            <span className="num text-xs text-mute">
-              {feedStatus?.high_events_24h ?? 0} HIGH / 24h · updated{" "}
-              {timeAgo(feedStatus?.last_run_at)}
+            <span className="num text-[0.7rem] leading-4 text-mute">
+              {feedStatus?.high_events_24h ?? 0} HIGH / 24h
+              <br />
+              updated {timeAgo(feedStatus?.last_run_at)}
             </span>
           }
         >
@@ -309,9 +312,13 @@ export default function GlobalPage() {
               {feed.map((item) => (
                 <div
                   key={`${item.source}-${item.id}`}
-                  className="rounded-lg border border-hairline bg-panel-raised/40 p-3"
+                  className="relative overflow-hidden rounded-lg border border-hairline bg-panel-raised/40 p-3"
                 >
-                  <div className="flex items-start justify-between gap-3">
+                  <span
+                    aria-hidden
+                    className={`absolute inset-y-0 left-0 w-[3px] ${TONE_RAIL[toneForStatus(item.severity)]}`}
+                  />
+                  <div className="flex items-start justify-between gap-3 pl-2">
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-white">
                         {item.title}
@@ -331,7 +338,7 @@ export default function GlobalPage() {
                   </div>
 
                   {(item.sources.length > 0 || item.url) && (
-                    <div className="mt-2 flex flex-wrap gap-2">
+                    <div className="mt-2 flex flex-wrap gap-2 pl-2">
                       {(item.sources.length
                         ? item.sources
                         : [{ title: "source", url: item.url ?? undefined }]
@@ -361,118 +368,164 @@ export default function GlobalPage() {
               ))}
             </div>
           )}
-        </Panel>
-      </section>
+        </IntelCard>
 
-      {/* Events */}
-      <section>
-        <h2 className="eyebrow mb-3">Global Events</h2>
-
-        {events.length === 0 ? (
-          <EmptyCard message="No global events available." />
-        ) : (
-          <div className="grid gap-4 lg:grid-cols-2">
-            {events.map((event) => (
-              <Panel key={event.id} tone={toneForStatus(event.severity)}>
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <h3 className="font-semibold text-white">
-                      {event.title}
-                    </h3>
-                    <p className="num mt-1 text-xs text-mute">
-                      {event.event_type}
-                      {event.region ? ` · ${event.region}` : ""}
-                    </p>
+        {/* Global Events */}
+        <IntelCard
+          label={
+            <span className="flex items-center gap-1.5">
+              <Globe2 size={12} /> Signals
+            </span>
+          }
+          title="Global Events"
+          tone={
+            events.some((e) => /crit|high/i.test(e.severity))
+              ? "critical"
+              : "live"
+          }
+          maxHeight="72vh"
+          action={
+            events.length > 0 ? (
+              <span className="num text-xs text-mute">
+                {events.length} tracked
+              </span>
+            ) : undefined
+          }
+        >
+          {events.length === 0 ? (
+            <EmptyCard message="No global events available." />
+          ) : (
+            <div className="space-y-2">
+              {events.map((event) => (
+                <div
+                  key={event.id}
+                  className="relative overflow-hidden rounded-lg border border-hairline bg-panel-raised/40 p-3"
+                >
+                  <span
+                    aria-hidden
+                    className={`absolute inset-y-0 left-0 w-[3px] ${TONE_RAIL[toneForStatus(event.severity)]}`}
+                  />
+                  <div className="flex items-start justify-between gap-3 pl-2">
+                    <div className="min-w-0">
+                      <h3 className="text-sm font-medium text-white">
+                        {event.title}
+                      </h3>
+                      <p className="num mt-1 text-[0.7rem] text-mute">
+                        {event.event_type}
+                        {event.region ? ` · ${event.region}` : ""}
+                      </p>
+                    </div>
+                    <SeverityBadge value={event.severity} />
                   </div>
-                  <SeverityBadge value={event.severity} />
                 </div>
-              </Panel>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
+        </IntelCard>
       </section>
 
-      {/* Market */}
-      <section className="mt-10">
-        <h2 className="eyebrow mb-3 flex items-center gap-2">
-          <DollarSign size={13} /> Market Intelligence
-        </h2>
-
-        {marketError ? (
-          <div className="rounded-lg border border-elevated/30 bg-elevated/5 p-4 text-sm text-elevated">
-            Market intelligence is temporarily unavailable.
-          </div>
-        ) : commodities.length === 0 ? (
-          <EmptyCard message="No commodity data available." />
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {commodities.map(([name, data]) => {
-              const change = Number(data?.percentage_change ?? 0);
-              const tone = change >= 0 ? "stable" : "critical";
-
-              return (
-                <Panel key={name} tone={tone}>
-                  <p className="eyebrow">{name}</p>
-                  <p className="num mt-2 text-2xl font-semibold text-white">
-                    {data?.latest_value ?? "—"}
-                  </p>
-                  <p className="mt-0.5 text-xs text-mute">
-                    {data?.unit ?? ""}
-                  </p>
-                  <p
-                    className={`num mt-3 text-sm font-semibold ${
-                      change >= 0 ? "text-stable" : "text-critical"
-                    }`}
+      {/* Market + Agriculture — same bounded-card treatment */}
+      <section className="mb-6 grid items-start gap-6 xl:grid-cols-2">
+        <IntelCard
+          label={
+            <span className="flex items-center gap-1.5">
+              <DollarSign size={12} /> Commodities & FX
+            </span>
+          }
+          title="Market Intelligence"
+          tone="live"
+          maxHeight="56vh"
+        >
+          {marketError ? (
+            <div className="rounded-lg border border-elevated/30 bg-elevated/5 p-4 text-sm text-elevated">
+              Market intelligence is temporarily unavailable.
+            </div>
+          ) : commodities.length === 0 ? (
+            <EmptyCard message="No commodity data available." />
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              {commodities.map(([name, data]) => {
+                const change = Number(data?.percentage_change ?? 0);
+                return (
+                  <div
+                    key={name}
+                    className="relative overflow-hidden rounded-lg border border-hairline bg-panel-raised/40 p-3"
                   >
-                    {signedPercent(change)}
-                  </p>
-                </Panel>
-              );
-            })}
-          </div>
-        )}
-      </section>
-
-      {/* Agriculture */}
-      <section className="mt-10">
-        <h2 className="eyebrow mb-3 flex items-center gap-2">
-          <Wheat size={13} /> Agriculture Intelligence
-        </h2>
-
-        {agricultureError ? (
-          <div className="rounded-lg border border-elevated/30 bg-elevated/5 p-4 text-sm text-elevated">
-            Agriculture intelligence is temporarily unavailable.
-          </div>
-        ) : risks.length === 0 ? (
-          <EmptyCard message="No agriculture signals available." />
-        ) : (
-          <div className="grid gap-4 lg:grid-cols-2">
-            {risks.map((risk, index) => (
-              <Panel
-                key={risk.id ?? index}
-                tone={toneForStatus(risk.severity)}
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="font-semibold text-white">
-                      {risk.crop ?? "Crop"}
+                    <span
+                      aria-hidden
+                      className={`absolute inset-y-0 left-0 w-[3px] ${
+                        change >= 0 ? "bg-stable" : "bg-critical"
+                      }`}
+                    />
+                    <p className="eyebrow pl-1">{name}</p>
+                    <p className="num mt-1.5 pl-1 text-xl font-semibold text-white">
+                      {data?.latest_value ?? "—"}
                     </p>
-                    <p className="text-sm text-dim">{risk.region ?? ""}</p>
+                    <p className="mt-0.5 pl-1 text-[0.7rem] text-mute">
+                      {data?.unit ?? ""}
+                    </p>
+                    <p
+                      className={`num mt-2 pl-1 text-xs font-semibold ${
+                        change >= 0 ? "text-stable" : "text-critical"
+                      }`}
+                    >
+                      {signedPercent(change)}
+                    </p>
                   </div>
-                  <SeverityBadge value={risk.severity ?? "INFO"} />
-                </div>
+                );
+              })}
+            </div>
+          )}
+        </IntelCard>
 
-                <div className="mt-4">
-                  <p className="eyebrow">{risk.signal_type ?? "Signal"}</p>
-                  <p className="num mt-1 text-xl font-semibold text-white">
-                    {risk.value ?? "—"}
-                    {risk.unit ? ` ${risk.unit}` : ""}
-                  </p>
+        <IntelCard
+          label={
+            <span className="flex items-center gap-1.5">
+              <Wheat size={12} /> Crop Risk
+            </span>
+          }
+          title="Agriculture Intelligence"
+          tone="live"
+          maxHeight="56vh"
+        >
+          {agricultureError ? (
+            <div className="rounded-lg border border-elevated/30 bg-elevated/5 p-4 text-sm text-elevated">
+              Agriculture intelligence is temporarily unavailable.
+            </div>
+          ) : risks.length === 0 ? (
+            <EmptyCard message="No agriculture signals available." />
+          ) : (
+            <div className="space-y-2">
+              {risks.map((risk, index) => (
+                <div
+                  key={risk.id ?? index}
+                  className="relative overflow-hidden rounded-lg border border-hairline bg-panel-raised/40 p-3"
+                >
+                  <span
+                    aria-hidden
+                    className={`absolute inset-y-0 left-0 w-[3px] ${TONE_RAIL[toneForStatus(risk.severity)]}`}
+                  />
+                  <div className="flex items-start justify-between gap-3 pl-2">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-white">
+                        {risk.crop ?? "Crop"}
+                      </p>
+                      <p className="text-xs text-dim">{risk.region ?? ""}</p>
+                    </div>
+                    <SeverityBadge value={risk.severity ?? "INFO"} />
+                  </div>
+                  <div className="mt-2 pl-2">
+                    <p className="eyebrow">{risk.signal_type ?? "Signal"}</p>
+                    <p className="num mt-0.5 text-lg font-semibold text-white">
+                      {risk.value ?? "—"}
+                      {risk.unit ? ` ${risk.unit}` : ""}
+                    </p>
+                  </div>
                 </div>
-              </Panel>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
+        </IntelCard>
       </section>
 
       <section className="mt-10">
