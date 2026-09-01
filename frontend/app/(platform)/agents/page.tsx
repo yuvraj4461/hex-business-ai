@@ -361,7 +361,7 @@ export default function AgentsPage() {
                 </span>
               </div>
 
-              <div className="space-y-2">
+              <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
                 {run.agent_runs.map((r, i) => (
                   <div
                     key={i}
@@ -386,8 +386,11 @@ export default function AgentsPage() {
 
               {run.findings.length > 0 && (
                 <div>
-                  <p className="eyebrow">Findings</p>
-                  <ul className="mt-2 space-y-1.5">
+                  <p className="eyebrow">
+                    Findings{" "}
+                    <span className="num text-mute">{run.findings.length}</span>
+                  </p>
+                  <ul className="mt-2 max-h-[22rem] space-y-1.5 overflow-y-auto pr-1">
                     {run.findings.map((f, i) => {
                       const { title, body } = describeItem(f);
                       return (
@@ -410,8 +413,13 @@ export default function AgentsPage() {
 
               {run.recommendations.length > 0 && (
                 <div>
-                  <p className="eyebrow">Recommendations</p>
-                  <ul className="mt-2 space-y-1.5">
+                  <p className="eyebrow">
+                    Recommendations{" "}
+                    <span className="num text-mute">
+                      {run.recommendations.length}
+                    </span>
+                  </p>
+                  <ul className="mt-2 max-h-[22rem] space-y-1.5 overflow-y-auto pr-1">
                     {run.recommendations.map((r, i) => {
                       const { title, body } = describeItem(r);
                       return (
@@ -435,7 +443,7 @@ export default function AgentsPage() {
               {run.errors.length > 0 && (
                 <div>
                   <p className="eyebrow !text-critical">Errors</p>
-                  <ul className="mt-2 space-y-1.5">
+                  <ul className="mt-2 max-h-52 space-y-1.5 overflow-y-auto pr-1">
                     {run.errors.map((e, i) => (
                       <li
                         key={i}
