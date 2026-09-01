@@ -38,19 +38,40 @@ Rules:
    recommendations.
 7. Be concise and executive-level. End with 2-4 concrete next steps
    when the evidence supports them.
+8. This is a continuing conversation. Use CONVERSATION SO FAR to
+   resolve references ("that", "it", "the second one", "why?") and to
+   avoid repeating yourself. Answer the CURRENT question, not an
+   earlier one.
 """
+
+
+def _format_history(history: list[dict] | None) -> str:
+    if not history:
+        return ""
+    lines = []
+    for turn in history[-10:]:
+        if not isinstance(turn, dict):
+            continue
+        who = "User" if turn.get("role") == "user" else "HEX"
+        content = str(turn.get("content", "")).strip()[:800]
+        if content:
+            lines.append(f"{who}: {content}")
+    if not lines:
+        return ""
+    return "CONVERSATION SO FAR:\n\n" + "\n\n".join(lines) + "\n\n"
 
 
 def synthesize_agent_findings(
     question: str,
     findings: list[dict],
     recommendations: list[dict],
+    history: list[dict] | None = None,
 ) -> str:
 
     prompt = f"""
 {SYSTEM_PROMPT}
 
-USER QUESTION:
+{_format_history(history)}CURRENT USER QUESTION:
 
 {question}
 

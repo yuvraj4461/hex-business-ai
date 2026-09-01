@@ -308,10 +308,15 @@ def ask_copilot(
 
     # ---------------------------------------------
     # Direct verified financial answer
+    #
+    # Only as a conversation opener — once there's history, a
+    # follow-up deserves a reasoned answer, so fall through to the
+    # synthesis path (which still has the verified figures).
     # ---------------------------------------------
 
-    if is_financial_fact_question(
-        request.question
+    if (
+        not request.history
+        and is_financial_fact_question(request.question)
     ):
 
         answer = (
@@ -596,6 +601,10 @@ def ask_copilot(
         question=request.question,
         findings=findings,
         recommendations=recommendations,
+        history=[
+            turn.model_dump()
+            for turn in request.history
+        ][-10:],
     )
 
     return {

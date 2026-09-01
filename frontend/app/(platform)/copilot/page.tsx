@@ -74,6 +74,10 @@ export default function CopilotPage() {
     if (!q || loading) return;
 
     setInput("");
+    const history = messages.slice(-8).map((m) => ({
+      role: m.role,
+      content: m.text.slice(0, 2000),
+    }));
     setMessages((m) => [
       ...m,
       { id: Date.now(), role: "user", text: q },
@@ -83,7 +87,7 @@ export default function CopilotPage() {
     try {
       const result = await apiRequest<CopilotResponse>("/copilot/ask", {
         method: "POST",
-        body: JSON.stringify({ question: q }),
+        body: JSON.stringify({ question: q, history }),
       });
       setMessages((m) => [
         ...m,
