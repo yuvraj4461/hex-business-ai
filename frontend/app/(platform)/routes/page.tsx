@@ -17,10 +17,11 @@ import { inr, num } from "@/lib/format";
 
 import PageHeader from "@/app/components/PageHeader";
 import Panel from "@/app/components/Panel";
+import IntelCard from "@/app/components/IntelCard";
 import SeverityBadge from "@/app/components/SeverityBadge";
 import StatTile from "@/app/components/StatTile";
 import { EmptyCard, ErrorCard, LoadingCard } from "@/app/components/StateCard";
-import { toneForStatus } from "@/app/components/tone";
+import { TONE_RAIL, toneForStatus } from "@/app/components/tone";
 
 interface RouteItem {
   id: number;
@@ -168,15 +169,15 @@ export default function RoutesPage() {
             tone="live"
             action={<Ship size={18} className="text-dim" />}
           >
-            <div className="overflow-x-auto">
+            <div className="max-h-[45vh] overflow-auto">
               <table className="w-full text-left text-sm">
-                <thead>
+                <thead className="sticky top-0 z-10 bg-panel">
                   <tr className="border-b border-hairline">
                     {["Reference", "Lane", "Status", "ETA", "Value", ""].map(
                       (h) => (
                         <th
                           key={h}
-                          className="eyebrow px-3 py-2.5 font-semibold"
+                          className="eyebrow bg-panel px-3 py-2.5 font-semibold"
                         >
                           {h}
                         </th>
@@ -231,73 +232,73 @@ export default function RoutesPage() {
       )}
 
       <section className="mt-8">
-        <h2 className="eyebrow mb-4">Route Network</h2>
-
         {routes.length === 0 ? (
-          <EmptyCard message="No supply routes are associated with this organization." />
+          <>
+            <h2 className="eyebrow mb-4">Route Network</h2>
+            <EmptyCard message="No supply routes are associated with this organization." />
+          </>
         ) : (
-          <div className="space-y-4">
-            {routes.map((route) => {
-              const tone = toneForStatus(route.risk_level);
-
-              return (
-                <Panel key={route.id} tone={tone}>
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <IntelCard
+            label="Network"
+            title="Route Network"
+            tone={
+              routes.some((r) => /high/i.test(r.risk_level))
+                ? "critical"
+                : routes.some((r) => /medium/i.test(r.risk_level))
+                  ? "elevated"
+                  : "live"
+            }
+            maxHeight="66vh"
+            action={
+              <span className="num text-xs text-mute">
+                {routes.length} lanes
+              </span>
+            }
+          >
+            <div className="grid gap-3 lg:grid-cols-2">
+              {routes.map((route) => (
+                <div
+                  key={route.id}
+                  className="relative overflow-hidden rounded-lg border border-hairline bg-panel-raised/40 p-4"
+                >
+                  <span
+                    aria-hidden
+                    className={`absolute inset-y-0 left-0 w-[3px] ${TONE_RAIL[toneForStatus(route.risk_level)]}`}
+                  />
+                  <div className="flex items-start justify-between gap-3 pl-2">
                     <div className="min-w-0">
-                      <h3 className="text-base font-bold text-white">
+                      <h3 className="text-sm font-semibold text-white">
                         {route.route_name}
                       </h3>
-                      <p className="text-sm text-dim">{route.corridor}</p>
-                      <p className="mt-2 text-sm text-white">
+                      <p className="mt-0.5 text-xs text-dim">
                         {route.origin_port}, {route.origin_country}
-                        <span className="mx-2 text-mute">→</span>
-                        {route.destination_port},{" "}
-                        {route.destination_country}
+                        <span className="mx-1.5 text-mute">→</span>
+                        {route.destination_port}, {route.destination_country}
                       </p>
                     </div>
-
-                    <div className="flex shrink-0 items-center gap-2">
-                      <span className="rounded-full bg-panel-raised px-2.5 py-0.5 text-[0.6875rem] font-semibold text-dim">
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      <span className="rounded-full bg-panel-raised px-2 py-0.5 text-[0.65rem] font-semibold text-dim">
                         {route.transport_mode}
                       </span>
                       <SeverityBadge value={route.risk_level} />
                     </div>
                   </div>
 
-                  <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="mt-3 grid grid-cols-2 gap-2 pl-2 text-xs sm:grid-cols-4">
                     {[
-                      {
-                        icon: MapPinned,
-                        label: "Distance",
-                        value: `${num(route.distance_km)} km`,
-                      },
-                      {
-                        icon: Clock3,
-                        label: "Transit",
-                        value: `${num(route.transit_days)} days`,
-                      },
-                      {
-                        icon: DollarSign,
-                        label: "Freight",
-                        value: inr(route.freight_cost),
-                      },
-                      {
-                        icon: CheckCircle2,
-                        label: "Status",
-                        value: route.status,
-                      },
+                      { icon: MapPinned, label: "Distance", value: `${num(route.distance_km)} km` },
+                      { icon: Clock3, label: "Transit", value: `${num(route.transit_days)} d` },
+                      { icon: DollarSign, label: "Freight", value: inr(route.freight_cost) },
+                      { icon: CheckCircle2, label: "Status", value: route.status },
                     ].map((cell) => {
                       const Icon = cell.icon;
                       return (
-                        <div
-                          key={cell.label}
-                          className="rounded-lg bg-panel-raised p-3"
-                        >
-                          <div className="flex items-center gap-1.5 text-mute">
-                            <Icon size={14} />
+                        <div key={cell.label}>
+                          <div className="flex items-center gap-1 text-mute">
+                            <Icon size={11} />
                             <span className="eyebrow">{cell.label}</span>
                           </div>
-                          <p className="num mt-1.5 font-semibold text-white">
+                          <p className="num mt-0.5 font-semibold text-white">
                             {cell.value}
                           </p>
                         </div>
@@ -305,24 +306,16 @@ export default function RoutesPage() {
                     })}
                   </div>
 
-                  <div className="mt-4 grid gap-3 md:grid-cols-2">
-                    <div className="rounded-lg border border-hairline p-3">
-                      <p className="eyebrow">Supplier</p>
-                      <p className="mt-1 font-semibold text-white">
-                        {route.supplier?.name ?? "Unknown supplier"}
-                      </p>
-                    </div>
-                    <div className="rounded-lg border border-hairline p-3">
-                      <p className="eyebrow">Product</p>
-                      <p className="mt-1 font-semibold text-white">
-                        {route.product?.name ?? "All products"}
-                      </p>
-                    </div>
-                  </div>
-                </Panel>
-              );
-            })}
-          </div>
+                  <p className="num mt-3 pl-2 text-[0.7rem] text-mute">
+                    {route.supplier?.name ?? "Unknown supplier"}
+                    {" · "}
+                    {route.product?.name ?? "All products"}
+                    {route.corridor ? ` · ${route.corridor}` : ""}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </IntelCard>
         )}
       </section>
     </div>
