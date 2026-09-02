@@ -9,7 +9,7 @@ LLM downstream only explains the figures it is handed.
 
 from sqlalchemy.orm import Session
 
-from app.ai.agent_context import get_agent_context
+from app.ai.agent_context import resolve_context
 from app.finance.engine import company_finance, flatten_for_agent
 from app.models.global_event import GlobalEvent
 
@@ -128,8 +128,8 @@ def finance_agent(state: dict, db: Session) -> dict:
         .order_by(GlobalEvent.detected_at.desc())
         .first()
     )
-    global_context = get_agent_context(
-        db=db, organization_id=organization_id, event=latest_event
+    global_context = resolve_context(
+        state, db, organization_id, latest_event
     )
 
     market_context = global_context.get("market", {}) or {}

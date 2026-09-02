@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 
 from app.ai.agent_context import (
-    get_agent_context,
+    resolve_context,
 )
 
 from app.models.global_event import (
@@ -42,10 +42,8 @@ def operations_agent(
     # 3. Build complete HEX context
     # -------------------------------------------------
 
-    context = get_agent_context(
-        db=db,
-        organization_id=organization_id,
-        event=latest_event,
+    context = resolve_context(
+        state, db, organization_id, latest_event
     )
 
     # -------------------------------------------------

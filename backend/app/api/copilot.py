@@ -1,4 +1,5 @@
 import re
+from concurrent.futures import ThreadPoolExecutor
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import func
@@ -562,6 +563,17 @@ def ask_copilot(
             "sources": [],
         }
 
+    # Web research (network-bound) runs alongside the agent graph
+    # (DB-bound) instead of after it. Only for questions about the
+    # outside world - an internal question gets a spurious Wikipedia hit.
+    _empty_web = {"provider": "none", "results": [], "wikipedia": None}
+    if looks_outward(request.question):
+        _web_pool = ThreadPoolExecutor(max_workers=1)
+        _web_future = _web_pool.submit(web_research, request.question)
+    else:
+        _web_pool = None
+        _web_future = None
+
     agent_result = run_business_agents(
         question=request.question,
         organization_id=organization_id,
@@ -569,13 +581,15 @@ def ask_copilot(
         agents=request.agents or None,
     )
 
-    # Ground the answer in outside facts *only* when the question actually
-    # asks about the outside world. An internal question ("biggest risk to
-    # my business") gets a spurious Wikipedia hit otherwise.
-    if looks_outward(request.question):
-        web = web_research(request.question)
+    if _web_future is not None:
+        try:
+            web = _web_future.result(timeout=20)
+        except Exception:  # noqa: BLE001
+            web = _empty_web
+        finally:
+            _web_pool.shutdown(wait=False)
     else:
-        web = {"provider": "none", "results": [], "wikipedia": None}
+        web = _empty_web
     web_sources = sources_from(web)
 
     findings = []

@@ -48,6 +48,24 @@ def run_business_agents(
         "errors": [],
     }
 
+    # Build the market / exposure / agriculture / demand context once and
+    # let every agent reuse it (it was rebuilt ~3x per run).
+    try:
+        from app.ai.context_builder import build_ai_context
+        from app.models.global_event import GlobalEvent
+
+        latest_event = (
+            db.query(GlobalEvent)
+            .order_by(GlobalEvent.detected_at.desc())
+            .first()
+        )
+        initial_state["shared_context"] = build_ai_context(
+            db=db, organization_id=organization_id, event=latest_event
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("could not pre-build agent context: %s", exc)
+        initial_state["shared_context"] = None
+
     try:
         graph = build_graph(db, agents)
 

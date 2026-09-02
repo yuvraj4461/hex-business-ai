@@ -27,3 +27,8 @@ class AgentState(TypedDict, total=False):
     errors: list[str]
 
     final_answer: str
+
+    # Built once per run and reused by every agent that needs the
+    # market / exposure / agriculture / demand context, instead of each
+    # agent rebuilding it (it was ~3 heavy rebuilds per run).
+    shared_context: dict[str, Any] | None
