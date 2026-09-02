@@ -86,6 +86,7 @@ export default function AnalyticsPage() {
   const [data, setData] = useState<Overview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [active, setActive] = useState<string>("financial");
 
   useEffect(() => {
     async function load() {
@@ -129,128 +130,160 @@ export default function AnalyticsPage() {
         description="Financial, sales, customer, product and supply-chain performance — computed from your own data."
       />
 
-      {/* section nav */}
+      {/* section tabs */}
       <div className="sticky top-0 z-10 -mx-6 mb-6 flex flex-wrap gap-2 border-b border-hairline bg-bg/90 px-6 py-3 backdrop-blur lg:-mx-8 lg:px-8">
-        {SECTIONS.map((s) => (
-          <a
-            key={s.id}
-            href={`#${s.id}`}
-            className="inline-flex items-center gap-1.5 rounded-full border border-hairline bg-panel px-3 py-1.5 text-xs font-medium text-dim transition hover:border-accent/40 hover:text-white"
-          >
-            <s.icon size={13} /> {s.label}
-          </a>
-        ))}
+        {SECTIONS.map((s) => {
+          const on = s.id === active;
+          return (
+            <button
+              key={s.id}
+              type="button"
+              onClick={() => setActive(s.id)}
+              className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-semibold transition ${
+                on
+                  ? "border-accent bg-accent text-bg"
+                  : "border-hairline bg-panel text-dim hover:border-accent/40 hover:text-white"
+              }`}
+            >
+              <s.icon size={13} /> {s.label}
+            </button>
+          );
+        })}
       </div>
 
-      {/* Financial */}
-      <Section id="financial" title="Financial" icon={Wallet}>
-        <KpiRow kpis={data.financial.kpis} />
-        <div className="mt-5 grid gap-5 lg:grid-cols-2">
-          <Panel label="Trend" title="Profit by month" tone="live">
-            <TrendLine
-              data={data.financial.pnl_trend.map((r) => ({
-                name: r.label,
-                value: r.profit,
-              }))}
-            />
-          </Panel>
-          <Panel label="Composition" title="Expenses by category" tone="elevated">
-            <BarBreakdown data={toChart(data.financial.expense_breakdown)} />
-          </Panel>
-        </div>
-        <div className="mt-5">
-          <Panel label="Trend" title="Revenue vs expenses by month" tone="live">
-            <RevExpTrend rows={data.financial.pnl_trend} />
-          </Panel>
-        </div>
-      </Section>
+      <div key={active} className="animate-section">
+        {active === "financial" && (
+          <Section title="Financial" icon={Wallet}>
+            <KpiRow kpis={data.financial.kpis} />
+            <div className="mt-5 grid gap-5 lg:grid-cols-2">
+              <Panel label="Trend" title="Profit by month" tone="live">
+                <TrendLine
+                  data={data.financial.pnl_trend.map((r) => ({
+                    name: r.label,
+                    value: r.profit,
+                  }))}
+                />
+              </Panel>
+              <Panel
+                label="Composition"
+                title="Expenses by category"
+                tone="elevated"
+              >
+                <BarBreakdown data={toChart(data.financial.expense_breakdown)} />
+              </Panel>
+            </div>
+            <div className="mt-5">
+              <Panel
+                label="Trend"
+                title="Revenue vs expenses by month"
+                tone="live"
+              >
+                <RevExpTrend rows={data.financial.pnl_trend} />
+              </Panel>
+            </div>
+          </Section>
+        )}
 
-      {/* Sales */}
-      <Section id="sales" title="Sales" icon={ShoppingCart}>
-        <KpiRow kpis={data.sales.kpis} />
-        <div className="mt-5 grid gap-5 lg:grid-cols-2">
-          <Panel label="Trend" title="Revenue by month" tone="live">
-            <TrendLine data={toChart(data.sales.sales_trend)} />
-          </Panel>
-          <Panel label="Mix" title="Revenue by category" tone="live">
-            <BarBreakdown data={toChart(data.sales.by_category)} />
-          </Panel>
-          <Panel label="Ranking" title="Top products by revenue" tone="stable">
-            <BarBreakdown data={toChart(data.sales.top_products)} />
-          </Panel>
-          <Panel label="Fulfilment" title="Orders by status" tone="elevated">
-            <BarBreakdown data={toChart(data.sales.order_status)} currency={false} />
-          </Panel>
-        </div>
-      </Section>
+        {active === "sales" && (
+          <Section title="Sales" icon={ShoppingCart}>
+            <KpiRow kpis={data.sales.kpis} />
+            <div className="mt-5 grid gap-5 lg:grid-cols-2">
+              <Panel label="Trend" title="Revenue by month" tone="live">
+                <TrendLine data={toChart(data.sales.sales_trend)} />
+              </Panel>
+              <Panel label="Mix" title="Revenue by category" tone="live">
+                <BarBreakdown data={toChart(data.sales.by_category)} />
+              </Panel>
+              <Panel label="Ranking" title="Top products by revenue" tone="stable">
+                <BarBreakdown data={toChart(data.sales.top_products)} />
+              </Panel>
+              <Panel label="Fulfilment" title="Orders by status" tone="elevated">
+                <BarBreakdown
+                  data={toChart(data.sales.order_status)}
+                  currency={false}
+                />
+              </Panel>
+            </div>
+          </Section>
+        )}
 
-      {/* Customers */}
-      <Section id="customers" title="Customers" icon={Users}>
-        <KpiRow kpis={data.customers.kpis} />
-        <div className="mt-5 grid gap-5 lg:grid-cols-2">
-          <Panel label="Loyalty" title="New vs returning" tone="live">
-            <BarBreakdown
-              data={toChart(data.customers.new_vs_returning)}
-              currency={false}
-            />
-          </Panel>
-          <Panel label="Ranking" title="Top customers by revenue" tone="stable">
-            <BarBreakdown data={toChart(data.customers.top_customers)} />
-          </Panel>
-        </div>
-      </Section>
+        {active === "customers" && (
+          <Section title="Customers" icon={Users}>
+            <KpiRow kpis={data.customers.kpis} />
+            <div className="mt-5 grid gap-5 lg:grid-cols-2">
+              <Panel label="Loyalty" title="New vs returning" tone="live">
+                <BarBreakdown
+                  data={toChart(data.customers.new_vs_returning)}
+                  currency={false}
+                />
+              </Panel>
+              <Panel
+                label="Ranking"
+                title="Top customers by revenue"
+                tone="stable"
+              >
+                <BarBreakdown data={toChart(data.customers.top_customers)} />
+              </Panel>
+            </div>
+          </Section>
+        )}
 
-      {/* Products */}
-      <Section id="products" title="Products" icon={BarChart3}>
-        <KpiRow kpis={data.products.kpis} />
-        <div className="mt-5 grid gap-5 lg:grid-cols-2">
-          <Panel label="Ranking" title="Revenue by product" tone="stable">
-            <BarBreakdown data={toChart(data.products.revenue_by_product)} />
-          </Panel>
-          <Panel label="Volume" title="Units sold by category" tone="live">
-            <BarBreakdown
-              data={toChart(data.products.units_by_category)}
-              currency={false}
-            />
-          </Panel>
-        </div>
-      </Section>
+        {active === "products" && (
+          <Section title="Products" icon={BarChart3}>
+            <KpiRow kpis={data.products.kpis} />
+            <div className="mt-5 grid gap-5 lg:grid-cols-2">
+              <Panel label="Ranking" title="Revenue by product" tone="stable">
+                <BarBreakdown data={toChart(data.products.revenue_by_product)} />
+              </Panel>
+              <Panel label="Volume" title="Units sold by category" tone="live">
+                <BarBreakdown
+                  data={toChart(data.products.units_by_category)}
+                  currency={false}
+                />
+              </Panel>
+            </div>
+          </Section>
+        )}
 
-      {/* Operations */}
-      <Section id="operations" title="Operations & Supply Chain" icon={Boxes}>
-        <KpiRow kpis={data.operations.kpis} />
-        <div className="mt-5 grid gap-5 lg:grid-cols-2">
-          <Panel label="Stock" title="Inventory by category" tone="live">
-            <BarBreakdown
-              data={toChart(data.operations.inventory_by_category)}
-              currency={false}
-            />
-          </Panel>
-          <Panel label="Suppliers" title="Lead time by supplier" tone="elevated">
-            <BarBreakdown
-              data={toChart(data.operations.lead_time_by_supplier)}
-              currency={false}
-            />
-          </Panel>
-        </div>
-      </Section>
+        {active === "operations" && (
+          <Section title="Operations & Supply Chain" icon={Boxes}>
+            <KpiRow kpis={data.operations.kpis} />
+            <div className="mt-5 grid gap-5 lg:grid-cols-2">
+              <Panel label="Stock" title="Inventory by category" tone="live">
+                <BarBreakdown
+                  data={toChart(data.operations.inventory_by_category)}
+                  currency={false}
+                />
+              </Panel>
+              <Panel
+                label="Suppliers"
+                title="Lead time by supplier"
+                tone="elevated"
+              >
+                <BarBreakdown
+                  data={toChart(data.operations.lead_time_by_supplier)}
+                  currency={false}
+                />
+              </Panel>
+            </div>
+          </Section>
+        )}
+      </div>
     </div>
   );
 }
 
 function Section({
-  id,
   title,
   icon: Icon,
   children,
 }: {
-  id: string;
   title: string;
   icon: LucideIcon;
   children: React.ReactNode;
 }) {
   return (
-    <section id={id} className="mt-10 scroll-mt-24 first:mt-0">
+    <section>
       <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-accent/90">
         <Icon size={15} /> {title}
       </h2>

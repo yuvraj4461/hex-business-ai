@@ -150,6 +150,28 @@ h1 {
   }
 }
 
+/* Panel / section entrance — used when switching tabs. */
+@keyframes hex-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-section {
+  animation: hex-fade-up 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-section {
+    animation: none;
+  }
+}
+
 p {
   color: inherit;
 }
