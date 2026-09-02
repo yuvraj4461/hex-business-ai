@@ -1,0 +1,6 @@
+po_number,supplier,status,currency,total_amount,incoterm,order_date,expected_date
+PO-2026-0101,Shanghai Ingredients Co,OPEN,USD,1850000,FOB,2026-08-05,2026-09-10
+PO-2026-0102,Mekong Rice Mills,OPEN,USD,940000,CIF,2026-08-12,2026-09-08
+PO-2026-0103,Gujarat Spice Traders,RECEIVED,INR,320000,EXW,2026-07-20,2026-07-28
+PO-2026-0104,Rotterdam Packaging BV,OPEN,EUR,610000,FOB,2026-08-18,2026-09-20
+PO-2026-0105,Kerala Coconut Board,OPEN,INR,275000,EXW,2026-08-22,2026-09-05

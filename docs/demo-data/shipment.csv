@@ -1,0 +1,5 @@
+reference,po_number,supplier,product,origin_country,origin_port,destination_country,destination_port,carrier,transport_mode,status,etd,eta,value_amount,currency
+SHP-CN-2001,PO-2026-0101,Shanghai Ingredients Co,Masala Crunch 200g,China,Shanghai,India,Mundra,Maersk,SEA,IN_TRANSIT,2026-08-20,2026-09-18,1850000,USD
+SHP-VN-2002,PO-2026-0102,Mekong Rice Mills,Spicy Rice Puffs 80g,Vietnam,Ho Chi Minh City,India,Nhava Sheva,CMA CGM,SEA,IN_TRANSIT,2026-08-25,2026-09-14,940000,USD
+SHP-NL-2003,PO-2026-0104,Rotterdam Packaging BV,Coconut Bites 180g,Netherlands,Rotterdam,India,Mundra,Hapag-Lloyd,SEA,PLANNED,2026-09-01,2026-09-30,610000,EUR
+SHP-IN-2004,PO-2026-0103,Gujarat Spice Traders,Masala Crunch 100g,India,Ahmedabad,India,Mumbai,BlueDart,ROAD,ARRIVED,2026-07-22,2026-07-25,320000,INR

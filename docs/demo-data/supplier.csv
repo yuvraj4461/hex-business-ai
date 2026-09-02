@@ -1,0 +1,7 @@
+name,category,status,country,city,lead_time_days,contact_email
+Shanghai Ingredients Co,Ingredients,ACTIVE,China,Shanghai,28,sales@shanghai.example
+Mekong Rice Mills,Grains,ACTIVE,Vietnam,Ho Chi Minh City,21,sales@mekong.example
+Gujarat Spice Traders,Spices,ACTIVE,India,Ahmedabad,7,sales@gujarat.example
+Rotterdam Packaging BV,Packaging,ACTIVE,Netherlands,Rotterdam,18,sales@rotterdam.example
+Kerala Coconut Board,Ingredients,ACTIVE,India,Kochi,10,sales@kerala.example
+Sichuan Chili Exports,Spices,AT_RISK,China,Chengdu,25,sales@sichuan.example
