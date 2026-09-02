@@ -13,10 +13,45 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 
 import requests
 
 logger = logging.getLogger(__name__)
+
+# The question names something that genuinely lives outside the company's
+# own database.
+_EXPLICIT_EXTERNAL = re.compile(
+    r"\b(price|prices|pricing|tariff|tariffs|inflation|interest rate|"
+    r"exchange rate|\bfx\b|currency|commodit\w*|stock market|the market|"
+    r"competitor\w*|industry|sector|news|headline\w*|geopolit\w*|\bwar\b|"
+    r"sanction\w*|regulat\w*|\btax(es|ation)?\b|\bgdp\b|export\w*|import\w*|"
+    r"worldwide|global economy|red sea|suez|panama canal|strait of|"
+    r"shipping (route|lane|disruption)|freight rate|benchmark)\b",
+    re.I,
+)
+# "My revenue", "how are WE doing", "the company" — an internal question.
+_INTERNAL = re.compile(
+    r"\b(my|our|we|us|the business|the company|the org\w*|this (quarter|month|"
+    r"year|week))\b",
+    re.I,
+)
+# Generic "what is X / define X / explain X" — worth a Wikipedia lookup,
+# but only when it isn't really about the company.
+_DEFINITIONAL = re.compile(
+    r"\b(what (is|are|does)|who is|define|definition of|explain|meaning of|"
+    r"how (do|does) .+ work)\b",
+    re.I,
+)
+
+
+def looks_outward(query: str) -> bool:
+    q = query or ""
+    if _EXPLICIT_EXTERNAL.search(q):
+        return True
+    if _INTERNAL.search(q):
+        return False
+    return bool(_DEFINITIONAL.search(q))
 
 SERPAPI_URL = "https://serpapi.com/search.json"
 WIKI_SEARCH = "https://en.wikipedia.org/w/api.php"
@@ -118,18 +153,23 @@ def _wikipedia(query: str) -> dict | None:
 
 
 def research(query: str, max_results: int = 5) -> dict:
-    """Return {provider, results, wikipedia} for a natural-language query."""
+    """Return {provider, results, wikipedia} for a natural-language query.
+
+    Wikipedia is only consulted for definitional / entity questions —
+    otherwise its search returns a loosely-matched article that pollutes
+    the answer.
+    """
 
     query = (query or "").strip()
     if not query:
         return {"provider": "none", "results": [], "wikipedia": None}
 
     results = _google(query, max_results)
-    wiki = _wikipedia(query)
+    wiki = _wikipedia(query) if _DEFINITIONAL.search(query) else None
 
-    provider = "serpapi+wikipedia" if results else "wikipedia"
-    if not results and not wiki:
-        provider = "none"
+    provider = "serpapi+wikipedia" if results and wiki else (
+        "serpapi" if results else "wikipedia" if wiki else "none"
+    )
 
     return {"provider": provider, "results": results, "wikipedia": wiki}
 

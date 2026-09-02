@@ -5,7 +5,11 @@ from sqlalchemy.orm import Session
 from app.agents.runner import run_business_agents
 from app.ai.agent_synthesis import synthesize_agent_findings
 from app.ai.context_builder import build_ai_context
-from app.ai.web_research import research as web_research, sources_from
+from app.ai.web_research import (
+    looks_outward,
+    research as web_research,
+    sources_from,
+)
 from app.database.connection import get_db
 
 from app.models.customer import Customer
@@ -511,20 +515,25 @@ def ask_copilot(
         agents=request.agents or None,
     )
 
-    # Ground the answer in outside facts before the agents interpret it.
-    web = web_research(request.question)
+    # Ground the answer in outside facts *only* when the question actually
+    # asks about the outside world. An internal question ("biggest risk to
+    # my business") gets a spurious Wikipedia hit otherwise.
+    if looks_outward(request.question):
+        web = web_research(request.question)
+    else:
+        web = {"provider": "none", "results": [], "wikipedia": None}
     web_sources = sources_from(web)
 
-    findings = [
-        {
+    findings = []
+    if web.get("results") or web.get("wikipedia"):
+        findings.append({
             "source": "WEB_RESEARCH",
             "data": {
                 "provider": web.get("provider"),
                 "results": web.get("results", []),
                 "wikipedia": web.get("wikipedia"),
             },
-        }
-    ]
+        })
 
     findings += list(
         agent_result.get(

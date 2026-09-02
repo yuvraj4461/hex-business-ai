@@ -109,13 +109,18 @@ Create a single business answer that:
     return text
 
 
+_MONEY_KEYS = ("Revenue", "Expenses", "Profit", "Operating margin pct",
+               "revenue", "expenses", "profit")
+
+
 def _fallback_answer(
     question: str,
     findings: list[dict],
     recommendations: list[dict],
     reason: str | None = None,
 ) -> str:
-    """Readable summary built directly from agent output, no LLM."""
+    """Clean executive read-out built straight from the deterministic agent
+    output — used when the LLM synthesis layer is unavailable."""
 
     if reason:
         logger.warning("Gemini synthesis unavailable, using fallback: %s", reason)
@@ -123,83 +128,81 @@ def _fallback_answer(
     def humanize(value: str) -> str:
         return value.replace("_", " ").strip().capitalize()
 
-    def scalars(data: dict) -> str:
-        """One-line view of a finding's simple (non-nested) fields."""
-
-        parts = [
-            f"{humanize(str(k))}: {v}"
-            for k, v in (data or {}).items()
-            if not isinstance(v, (dict, list))
-        ]
-        return "; ".join(parts[:6])
-
-    reason_line = (
-        f" (reason: {reason.splitlines()[0][:200]})" if reason else ""
-    )
     lines = [
-        "HEX could not reach its language model, so this is a direct "
-        "summary of the research and specialist agent output (no AI "
-        "synthesis)." + reason_line,
+        "*HEX's language model is busy right now, so this is a direct "
+        "read-out from the specialist agents — the figures are exact.*",
         "",
-        f"Question: {question}",
     ]
 
-    # Web research, if any, first — it's the outside-world context.
+    # --- headline figures from the finance / verified findings ----------
+    money: dict[str, object] = {}
+    for f in findings or []:
+        if not isinstance(f, dict):
+            continue
+        if f.get("type") == "finance_metrics" or f.get("source") in (
+            "VERIFIED_HEX_DATABASE", "finance_metrics",
+        ):
+            for k, v in (f.get("data") or {}).items():
+                if k in _MONEY_KEYS and not isinstance(v, (dict, list)):
+                    money.setdefault(humanize(str(k)), v)
+
+    if money:
+        lines.append("**Key figures**")
+        for k, v in list(money.items())[:6]:
+            lines.append(f"- {k}: {v}")
+        lines.append("")
+
+    # --- what the agents flagged --------------------------------------
+    if recommendations:
+        lines.append("**What the agents flagged**")
+        seen: set[str] = set()
+        for rec in recommendations:
+            if isinstance(rec, str):
+                text = rec
+            elif isinstance(rec, dict):
+                text = (
+                    rec.get("reason")
+                    or rec.get("message")
+                    or rec.get("note")
+                    or rec.get("recommendation")
+                    or humanize(str(rec.get("type", "recommendation")))
+                )
+                sev = rec.get("severity")
+                if sev:
+                    text = f"{text} [{sev}]"
+            else:
+                continue
+            # skip the internal "instruction" recommendations meant for the LLM
+            if text.lower().startswith(("use the relevant", "treat verified",
+                                        "ground external")):
+                continue
+            if text not in seen:
+                seen.add(text)
+                lines.append(f"- {text}")
+        lines.append("")
+
+    # --- outside context, only if we actually have web results --------
     web = next(
-        (
-            f.get("data", {})
-            for f in (findings or [])
-            if isinstance(f, dict) and f.get("source") == "WEB_RESEARCH"
-        ),
+        (f.get("data", {}) for f in (findings or [])
+         if isinstance(f, dict) and f.get("source") == "WEB_RESEARCH"),
         None,
     )
-    if web:
-        wiki = web.get("wikipedia") or {}
+    results = (web or {}).get("results") or []
+    wiki = (web or {}).get("wikipedia") or {}
+    if results or wiki.get("summary"):
+        lines.append("**Outside context**")
         if wiki.get("summary"):
-            lines += ["", f"Wikipedia — {wiki.get('title')}", wiki["summary"][:600]]
-        results = web.get("results") or []
-        if results:
-            lines += ["", "Web results"]
-            for r in results[:5]:
-                lines.append(
-                    f"- {r.get('title')}: {(r.get('snippet') or '')[:180]} "
-                    f"({r.get('url')})"
-                )
-
-    lines += ["", "Specialist findings"]
-
-    for item in findings or []:
-        if not isinstance(item, dict):
-            lines.append(f"- {item}")
-            continue
-        if item.get("source") == "WEB_RESEARCH":
-            continue
-
-        label = (
-            item.get("agent")
-            or item.get("source")
-            or humanize(str(item.get("type", "finding")))
-        )
-        detail = scalars(item.get("data", {}))
-        lines.append(f"- {label}" + (f" — {detail}" if detail else ""))
-
-    if recommendations:
-        lines.append("")
-        lines.append("Recommendations")
-        for rec in recommendations:
-            if not isinstance(rec, dict):
-                lines.append(f"- {rec}")
-                continue
-
-            text = (
-                rec.get("message")
-                or rec.get("note")
-                or rec.get("recommendation")
-                or humanize(str(rec.get("type", "recommendation")))
-            )
-            severity = rec.get("severity")
+            lines.append(f"- {wiki.get('title')}: {wiki['summary'][:280]}")
+        for r in results[:3]:
             lines.append(
-                f"- {text}" + (f" [{severity}]" if severity else "")
+                f"- {r.get('title')}: {(r.get('snippet') or '')[:160]}"
             )
+        lines.append("")
 
-    return "\n".join(lines)
+    if len(lines) <= 2:
+        lines.append(
+            "No specialist findings were produced for this question. Try "
+            "rephrasing, or check the Agents page."
+        )
+
+    return "\n".join(lines).strip()
