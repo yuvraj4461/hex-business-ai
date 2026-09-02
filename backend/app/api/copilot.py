@@ -551,15 +551,17 @@ def ask_copilot(
         or []
     )
 
-    findings.append(
-        {
-            "source":
-                "VERIFIED_HEX_DATABASE",
-
-            "data":
-                financials,
-        }
-    )
+    # Verified financials are grounding for the finance/risk lens. If the
+    # user narrowed "Consult" to agents that don't include finance, don't
+    # inject them — a World-Watch-only question shouldn't lead with revenue.
+    finance_in_scope = (not request.agents) or ("finance" in request.agents)
+    if finance_in_scope:
+        findings.append(
+            {
+                "source": "VERIFIED_HEX_DATABASE",
+                "data": financials,
+            }
+        )
 
     findings.append(
         {
@@ -573,13 +575,25 @@ def ask_copilot(
         }
     )
 
+    context_for_findings = context
+    if not finance_in_scope:
+        context_for_findings = {
+            k: v for k, v in context.items() if k != "verified_facts"
+        }
+        biz = context_for_findings.get("business")
+        if isinstance(biz, dict):
+            context_for_findings["business"] = {
+                k: v for k, v in biz.items()
+                if k != "verified_financial_metrics"
+            }
+
     findings.append(
         {
             "source":
                 "GLOBAL_CONTEXT",
 
             "data":
-                context,
+                context_for_findings,
         }
     )
 
@@ -592,13 +606,14 @@ def ask_copilot(
         )
     )
 
-    recommendations.append(
-        (
-            "Treat VERIFIED_HEX_DATABASE as authoritative "
-            "for revenue, expenses, profit, order count, "
-            "customer count, and verified business exposure."
+    if finance_in_scope:
+        recommendations.append(
+            (
+                "Treat VERIFIED_HEX_DATABASE as authoritative "
+                "for revenue, expenses, profit, order count, "
+                "customer count, and verified business exposure."
+            )
         )
-    )
 
     recommendations.append(
         (
