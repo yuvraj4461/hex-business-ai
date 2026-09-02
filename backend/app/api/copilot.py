@@ -316,6 +316,7 @@ def ask_copilot(
 
     if (
         not request.history
+        and not request.agents
         and is_financial_fact_question(request.question)
     ):
 
@@ -507,6 +508,7 @@ def ask_copilot(
         question=request.question,
         organization_id=organization_id,
         db=db,
+        agents=request.agents or None,
     )
 
     # Ground the answer in outside facts before the agents interpret it.

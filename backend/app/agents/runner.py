@@ -10,8 +10,8 @@ from typing import Any
 
 from app.agents.orchestrator import (
     AGENT_LABELS,
-    AGENT_SEQUENCE,
     build_graph,
+    resolve_sequence,
 )
 
 logger = logging.getLogger(__name__)
@@ -27,8 +27,12 @@ def run_business_agents(
     question: str,
     organization_id: int,
     db,
+    agents: list[str] | None = None,
 ) -> dict[str, Any]:
-    """Run all four agents and return the merged state.
+    """Run the agent graph and return the merged state.
+
+    ``agents`` optionally limits the run to a subset (finance / sales /
+    operations / watch / risk); ``None`` or empty runs all of them.
 
     Always returns a dict with findings, recommendations, agent_runs and
     errors, even if the graph itself fails to execute. Callers such as the
@@ -45,7 +49,7 @@ def run_business_agents(
     }
 
     try:
-        graph = build_graph(db)
+        graph = build_graph(db, agents)
 
         result = graph.invoke(initial_state)
 
@@ -65,7 +69,7 @@ def run_business_agents(
                     "findings_added": 0,
                     "recommendations_added": 0,
                 }
-                for name in AGENT_SEQUENCE
+                for name in resolve_sequence(agents)
             ],
         }
 

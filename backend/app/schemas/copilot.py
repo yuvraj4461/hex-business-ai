@@ -24,6 +24,13 @@ class CopilotRequest(BaseModel):
         max_length=20,
     )
 
+    # Which specialist agents to consult (finance / sales / operations /
+    # watch / risk). Empty = all of them.
+    agents: list[str] = Field(
+        default_factory=list,
+        max_length=5,
+    )
+
 
 class CopilotSource(BaseModel):
 

@@ -163,8 +163,28 @@ def wrap_agent(
     return node
 
 
-def build_graph(db):
-    """Compile the four-agent graph. Every agent is wired, including sales."""
+def resolve_sequence(agents: list[str] | None) -> list[str]:
+    """Filter AGENT_SEQUENCE to the requested subset, preserving order.
+
+    Unknown names are ignored; an empty or fully-unknown request runs the
+    whole pipeline.
+    """
+
+    if not agents:
+        return list(AGENT_SEQUENCE)
+
+    wanted = {str(a).strip().lower() for a in agents}
+    picked = [name for name in AGENT_SEQUENCE if name in wanted]
+    return picked or list(AGENT_SEQUENCE)
+
+
+def build_graph(db, agents: list[str] | None = None):
+    """Compile the agent graph, optionally limited to a subset of agents
+    (finance / sales / operations / watch / risk). Order is always the
+    canonical AGENT_SEQUENCE order so later agents still see earlier
+    findings."""
+
+    sequence = resolve_sequence(agents)
 
     # Imported here rather than at module scope so that a syntax error or
     # heavy import inside one agent cannot break the whole package import.
@@ -184,20 +204,17 @@ def build_graph(db):
 
     graph = StateGraph(AgentState)
 
-    for name in AGENT_SEQUENCE:
+    for name in sequence:
         graph.add_node(
             name,
             wrap_agent(name, agent_functions[name], db),
         )
 
-    graph.add_edge(START, AGENT_SEQUENCE[0])
+    graph.add_edge(START, sequence[0])
 
-    for current, following in zip(
-        AGENT_SEQUENCE,
-        AGENT_SEQUENCE[1:],
-    ):
+    for current, following in zip(sequence, sequence[1:]):
         graph.add_edge(current, following)
 
-    graph.add_edge(AGENT_SEQUENCE[-1], END)
+    graph.add_edge(sequence[-1], END)
 
     return graph.compile()

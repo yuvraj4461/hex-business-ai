@@ -4,11 +4,17 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 
 import {
   Bot,
+  DollarSign,
   ExternalLink,
   Loader2,
   Plus,
+  Radar,
   Send,
+  ShieldAlert,
+  ShoppingCart,
   Sparkles,
+  Truck,
+  type LucideIcon,
 } from "lucide-react";
 
 import { apiRequest } from "@/lib/api";
@@ -55,12 +61,32 @@ const EXAMPLES = [
   "What's driving my expenses this quarter?",
 ];
 
+const AGENTS: { key: string; label: string; icon: LucideIcon }[] = [
+  { key: "finance", label: "Finance", icon: DollarSign },
+  { key: "sales", label: "Sales", icon: ShoppingCart },
+  { key: "operations", label: "Operations", icon: Truck },
+  { key: "watch", label: "World Watch", icon: Radar },
+  { key: "risk", label: "Risk", icon: ShieldAlert },
+];
+const ALL_AGENT_KEYS = AGENTS.map((a) => a.key);
+
 export default function CopilotPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [agents, setAgents] = useState<string[]>(ALL_AGENT_KEYS);
 
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  function toggleAgent(key: string) {
+    setAgents((cur) =>
+      cur.includes(key)
+        ? cur.length > 1
+          ? cur.filter((k) => k !== key)
+          : cur
+        : [...cur, key],
+    );
+  }
 
   useEffect(() => {
     scrollRef.current?.scrollTo({
@@ -87,7 +113,11 @@ export default function CopilotPage() {
     try {
       const result = await apiRequest<CopilotResponse>("/copilot/ask", {
         method: "POST",
-        body: JSON.stringify({ question: q, history }),
+        body: JSON.stringify({
+          question: q,
+          history,
+          agents: agents.length === ALL_AGENT_KEYS.length ? [] : agents,
+        }),
       });
       setMessages((m) => [
         ...m,
@@ -242,7 +272,29 @@ export default function CopilotPage() {
               )}
             </div>
 
-            <form onSubmit={handleSubmit} className="mt-4 flex gap-2">
+            <div className="mt-4 flex flex-wrap items-center gap-1.5">
+              <span className="eyebrow mr-1 text-mute">Consult</span>
+              {AGENTS.map((a) => {
+                const on = agents.includes(a.key);
+                return (
+                  <button
+                    key={a.key}
+                    type="button"
+                    onClick={() => toggleAgent(a.key)}
+                    aria-pressed={on}
+                    className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition ${
+                      on
+                        ? "border-accent/50 bg-accent/15 text-white"
+                        : "border-hairline bg-panel text-mute hover:text-dim"
+                    }`}
+                  >
+                    <a.icon size={12} /> {a.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <form onSubmit={handleSubmit} className="mt-3 flex gap-2">
               <input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
