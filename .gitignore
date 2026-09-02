@@ -32,3 +32,6 @@ Thumbs.db
 _e2e*.mjs
 _shot.mjs
 scratchpad/
+
+# Office lock files
+~$*
