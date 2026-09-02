@@ -34,8 +34,11 @@ router = APIRouter(
 # to report DEGRADED instead of claiming READY when a table is empty.
 AGENT_REQUIREMENTS = {
     "finance": {
-        "description": "Revenue, expenses and working-capital analysis",
-        "tables": ["transactions", "expenses"],
+        "description": (
+            "Deterministic finance engine — margins, growth, cash/runway, "
+            "volatility, unit economics and break-even"
+        ),
+        "tables": ["transactions", "expenses", "orders"],
     },
     "sales": {
         "description": "Order volume, fulfilment and demand trend",

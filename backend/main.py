@@ -51,6 +51,10 @@ from app.api.analytics_overview import (
     router as analytics_overview_router,
 )
 
+from app.api.finance import (
+    router as finance_router,
+)
+
 from app.api.approvals import (
     router as approvals_router,
 )
@@ -183,6 +187,10 @@ app.include_router(
 
 app.include_router(
     analytics_overview_router
+)
+
+app.include_router(
+    finance_router
 )
 
 app.include_router(

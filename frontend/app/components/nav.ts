@@ -8,6 +8,7 @@ import {
   Route,
   ScrollText,
   ShieldAlert,
+  Sigma,
   Sparkles,
   Stamp,
   Target,
@@ -66,6 +67,13 @@ export const NAV_ITEMS: NavItem[] = [
     href: "/ask",
     icon: MessagesSquare,
     description: "Ask your business data in plain language — answers with charts",
+    group: "Intelligence",
+  },
+  {
+    name: "Finance",
+    href: "/finance",
+    icon: Sigma,
+    description: "Deterministic finance engine — computed metrics and a formula calculator",
     group: "Intelligence",
   },
   {
