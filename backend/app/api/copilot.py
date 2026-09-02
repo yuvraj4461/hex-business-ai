@@ -1,3 +1,5 @@
+import re
+
 from fastapi import APIRouter, Depends
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -89,6 +91,39 @@ def is_financial_fact_question(
         keyword in text
         for keyword in keywords
     )
+
+
+_BUSINESS_TERMS = re.compile(
+    r"\b(revenue|sales|profit|margin|cost|costs|expense|expenses|cash|runway|"
+    r"burn|budget|forecast|order|orders|customer|customers|churn|retention|"
+    r"supplier|suppliers|vendor|inventory|stock|warehouse|route|routes|lane|"
+    r"shipment|shipments|freight|logistic|corridor|risk|exposure|disruption|"
+    r"agent|agents|scenario|kpi|performance|growth|demand|pricing|valuation|"
+    r"working capital|break.?even|ltv|cac|roi|ebitda|p&l|balance sheet|"
+    r"business|company|operations?|finance|financial|market|economy|"
+    r"strategy|invest\w*)\b",
+    re.I,
+)
+
+
+_QUESTION_WORD = re.compile(
+    r"\b(my|our|we|us|help|how|what|why|which|should|can|will|is|are|do|does)\b",
+    re.I,
+)
+
+
+def is_business_query(question: str) -> bool:
+    """Does the question plausibly relate to what HEX knows about — this
+    business, its operations, markets, or risk? A bare person/place name
+    ("akshay kumar") should not trigger a full agent analysis."""
+
+    q = (question or "").strip()
+    if len(q) < 3:
+        return False
+    if _BUSINESS_TERMS.search(q) or looks_outward(q):
+        return True
+    # a phrased question of a few words gets the benefit of the doubt
+    return bool(_QUESTION_WORD.search(q)) and len(q.split()) >= 4
 
 
 def find_relevant_event(
@@ -507,6 +542,25 @@ def ask_copilot(
     # ---------------------------------------------
     # General AI questions
     # ---------------------------------------------
+
+    # An off-topic query (a bare name, "akshay kumar") shouldn't spin up a
+    # full agent analysis and present it as if it were an answer.
+    if not is_business_query(request.question):
+        return {
+            "question": request.question,
+            "answer": (
+                "That doesn't look like a question I can help with. HEX "
+                "answers questions about **your business** — its finances, "
+                "sales, customers, suppliers and inventory — and about "
+                "**markets and global risk** that could affect it.\n\n"
+                "Try, for example: *\"what's driving my expenses this "
+                "quarter?\"*, *\"which suppliers have the longest lead "
+                "times?\"*, or *\"how would a Red Sea disruption affect my "
+                "costs?\"*"
+            ),
+            "data": {"organization_id": organization_id},
+            "sources": [],
+        }
 
     agent_result = run_business_agents(
         question=request.question,
