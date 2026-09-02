@@ -47,6 +47,10 @@ from app.api.analytics_ask import (
     router as analytics_ask_router,
 )
 
+from app.api.analytics_overview import (
+    router as analytics_overview_router,
+)
+
 from app.api.approvals import (
     router as approvals_router,
 )
@@ -175,6 +179,10 @@ app.include_router(
 
 app.include_router(
     analytics_ask_router
+)
+
+app.include_router(
+    analytics_overview_router
 )
 
 app.include_router(
