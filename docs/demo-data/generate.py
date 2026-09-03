@@ -151,14 +151,14 @@ write("inventory.csv", [
 # transactions (revenue) — 15 months, with a clear dip
 # --------------------------------------------------------------------------
 start = date(2025, 6, 1)
-base = 1_150_000
+base = 2_600_000          # healthy: ~35-40% operating margin vs the expenses below
 tx = []
 for i in range(15):
     m = date(start.year + (start.month - 1 + i) // 12,
              (start.month - 1 + i) % 12 + 1, 1)
     trend = base * (1 + 0.02 * i)
-    if i in (9, 10):           # a two-month contraction
-        trend *= 0.55
+    if i in (9, 10):           # a visible two-month contraction (still profitable)
+        trend *= 0.72
     seasonal = 1.25 if m.month in (10, 11) else (0.9 if m.month in (2, 6) else 1.0)
     total = trend * seasonal
     # split into 2-3 payouts per month
